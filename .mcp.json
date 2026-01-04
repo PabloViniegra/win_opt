@@ -7,6 +7,18 @@
     "fetch": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-fetch"]
+    },
+    "serena": {
+      "command": "/home/pablo/.local/bin/uv",
+      "args": [
+        "run",
+        "--directory",
+        "/home/pablo/Descargas/serena",
+        "serena",
+        "start-mcp-server",
+        "--project",
+        "/home/pablo/vscode/win_opt"
+      ]
     }
   }
 }
