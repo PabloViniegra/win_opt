@@ -2,10 +2,10 @@
 name = "win_opt"
 version = "1.0.0"
 edition = "2024"
-authors = ["Tu Nombre <email@example.com>"]
+authors = ["pablovpmadrid@gmail.com"]
 description = "Herramienta de optimización y mantenimiento para Windows 11"
 license = "MIT"
-repository = "https://github.com/tu-usuario/win_opt"
+repository = "https://github.com/PabloViniegra/win_opt"
 readme = "README.md"
 keywords = ["windows", "optimization", "system", "maintenance"]
 categories = ["command-line-utilities"]

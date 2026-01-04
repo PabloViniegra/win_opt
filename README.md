@@ -183,13 +183,15 @@ cargo fmt
 
 ### Optimized Release Build (Recommended)
 
-Use the provided build script for maximum optimization and minimal antivirus false positives:
+Use the provided build scripts for maximum optimization and minimal antivirus false positives:
+
+#### From Linux/macOS:
 
 ```bash
 # Hacer ejecutable el script (solo la primera vez)
 chmod +x build_release.sh
 
-# Build optimizado (desde Linux)
+# Build optimizado
 ./build_release.sh
 
 # Con instalación automática de dependencias
@@ -199,12 +201,33 @@ chmod +x build_release.sh
 ./build_release.sh --clean
 ```
 
-This script:
-- ✅ Uses optimized compiler flags (`-O=z`, `lto`, `strip`)
-- ✅ Generates smaller, cleaner binaries
-- ✅ Cross-compiles for Windows (x86_64-pc-windows-gnu)
-- ✅ Calculates SHA256 hash for verification
-- ✅ Reduces antivirus false positives
+#### From Windows (PowerShell):
+
+```powershell
+# Build optimizado
+.\build_release.ps1
+
+# Con instalación automática de dependencias
+.\build_release.ps1 -InstallDeps
+
+# Con limpieza previa
+.\build_release.ps1 -Clean
+
+# Firmar digitalmente (si tienes certificado)
+.\build_release.ps1 -Sign -CertPath .\cert.pfx -CertPassword "tu_password"
+
+# Ver todas las opciones
+.\build_release.ps1 -Help
+```
+
+These scripts:
+- ✅ Use optimized compiler flags (`opt-level=z`, `lto`, `strip`)
+- ✅ Generate smaller, cleaner binaries (~30-40% reduction)
+- ✅ Cross-compile for Windows (GNU from Linux, MSVC from Windows)
+- ✅ Calculate SHA256 hash for verification
+- ✅ Reduce antivirus false positives significantly
+- ✅ Support code signing (Windows script only)
+- ✅ Verify Windows Defender status and provide exclusion commands
 
 ### Cross-compilation for Windows (from Linux/macOS)
 

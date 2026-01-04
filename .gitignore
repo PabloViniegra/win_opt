@@ -1,1 +1,43 @@
-/target
+# Rust / Cargo
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Release builds
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+*.o
+*.a
+*.lib
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Certificados (NUNCA subir a git)
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Logs
+*.log
+
+# Sistema operativo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporal
+tmp/
+temp/
+*.tmp
