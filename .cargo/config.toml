@@ -1,0 +1,31 @@
+# Configuración de Cargo para optimizar compilación Windows desde Linux
+
+# Configuración para target Windows (GNU)
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+ar = "x86_64-w64-mingw32-ar"
+
+# Flags adicionales para reducir tamaño y mejorar optimización
+rustflags = [
+    "-C", "target-feature=+crt-static",  # Enlazar CRT estáticamente
+    "-C", "link-arg=-s",                  # Strip en tiempo de enlace
+]
+
+# Configuración para target Windows (MSVC) - si usas cross
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-C", "target-feature=+crt-static",  # Enlazar CRT estáticamente
+]
+
+# Configuración de build global
+[build]
+# Target por defecto para este proyecto
+# default-target = "x86_64-pc-windows-gnu"
+
+[profile.release]
+# Estas configuraciones también están en Cargo.toml, pero se pueden reforzar aquí
+# opt-level = "z"
+# lto = true
+# codegen-units = 1
+# strip = true
+# panic = "abort"

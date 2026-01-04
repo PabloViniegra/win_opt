@@ -2,8 +2,31 @@
 name = "win_opt"
 version = "1.0.0"
 edition = "2024"
+authors = ["Tu Nombre <email@example.com>"]
+description = "Herramienta de optimización y mantenimiento para Windows 11"
+license = "MIT"
+repository = "https://github.com/tu-usuario/win_opt"
+readme = "README.md"
+keywords = ["windows", "optimization", "system", "maintenance"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 ratatui = "0.29"
 crossterm = "0.28"
 sysinfo = "0.30"
+
+# Perfil optimizado para Release - Reduce detecciones de antivirus
+[profile.release]
+# Optimización máxima de tamaño (reduce heurísticas de AV)
+opt-level = "z"          # Optimizar para tamaño en lugar de velocidad
+lto = true               # Link Time Optimization - binario más eficiente y pequeño
+codegen-units = 1        # Mejor optimización (compilación más lenta, binario más limpio)
+strip = true             # Eliminar símbolos de debug y metadata innecesaria
+panic = "abort"          # Reduce tamaño del binario (no incluye unwinding logic)
+
+# Configuración específica para Windows
+[target.'cfg(windows)'.dependencies]
+# Las dependencias ya son compatibles con Windows
+
+[profile.release.package."*"]
+opt-level = "z"          # Optimizar dependencias también

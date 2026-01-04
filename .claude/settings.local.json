@@ -9,7 +9,8 @@
       "mcp__context7__query-docs",
       "Bash(cargo clippy:*)",
       "Bash(cargo test:*)",
-      "Bash(cargo fmt:*)"
+      "Bash(cargo fmt:*)",
+      "mcp__serena__read_file"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -48,6 +48,83 @@ Download the latest `win_opt.exe` from the [Releases](../../releases) page.
 1. **Standard mode**: Double-click `win_opt.exe` or run from Command Prompt/PowerShell
 2. **Administrator mode** (recommended): Right-click `win_opt.exe` → "Run as administrator"
 
+## ⚠️ Important: Antivirus False Positives
+
+**This is a legitimate system optimization tool, but antivirus software may flag it as suspicious.**
+
+### Why does this happen?
+
+Windows Defender and other antivirus programs use heuristic analysis to detect potentially malicious behavior. Unfortunately, **legitimate system optimization tools** perform operations that are similar to what malware does:
+
+- Executing system commands (`cmd`, `DISM`, `sfc`, `netsh`)
+- Deleting files in system directories
+- Modifying Windows services
+- Changing scheduled tasks
+- Accessing registry and power settings
+
+**These are normal operations for a system maintenance tool**, but they trigger antivirus heuristics.
+
+### Solutions
+
+#### Option 1: Add an exception in Windows Defender (Recommended)
+
+Run PowerShell **as Administrator** and execute:
+
+```powershell
+# Add exception by file path
+Add-MpPreference -ExclusionPath "C:\path\to\win_opt.exe"
+
+# Or add exception by process name
+Add-MpPreference -ExclusionProcess "win_opt.exe"
+```
+
+Alternatively, use Windows Security GUI:
+1. Open **Windows Security** → **Virus & threat protection**
+2. Click **Manage settings** under "Virus & threat protection settings"
+3. Scroll to **Exclusions** → Click **Add or remove exclusions**
+4. Click **Add an exclusion** → **File** → Select `win_opt.exe`
+
+#### Option 2: Build from source yourself
+
+The safest way to ensure the binary is trustworthy is to compile it yourself:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/win_opt.git
+cd win_opt
+
+# Build optimized release binary
+cargo build --release --target x86_64-pc-windows-msvc
+
+# The executable will be at: target/x86_64-pc-windows-msvc/release/win_opt.exe
+```
+
+#### Option 3: Report false positive to Microsoft
+
+You can help improve Windows Defender by reporting the false positive:
+1. Visit: https://www.microsoft.com/en-us/wdsi/filesubmission
+2. Submit `win_opt.exe` for analysis
+3. Select "I believe this file is clean"
+
+### Build optimizations to reduce false positives
+
+This project uses the following Cargo optimizations (in `Cargo.toml`) to generate cleaner binaries:
+
+- **`opt-level = "z"`** - Size optimization (smaller, cleaner binaries)
+- **`lto = true`** - Link-time optimization for better code generation
+- **`strip = true`** - Remove debug symbols and metadata
+- **`panic = "abort"`** - Reduce binary size
+- **`codegen-units = 1`** - Better optimization quality
+
+### Verification
+
+You can verify the integrity of the official releases:
+- Check SHA256 hashes provided in the release notes
+- Scan with multiple antivirus engines on [VirusTotal.com](https://www.virustotal.com)
+- Review the complete source code (single file: `src/main.rs`)
+
+**This is open-source software** - you can audit every line of code before running it.
+
 ## Usage
 
 ### Navigation
@@ -103,6 +180,31 @@ cargo clippy -- -D warnings
 # Format code
 cargo fmt
 ```
+
+### Optimized Release Build (Recommended)
+
+Use the provided build script for maximum optimization and minimal antivirus false positives:
+
+```bash
+# Hacer ejecutable el script (solo la primera vez)
+chmod +x build_release.sh
+
+# Build optimizado (desde Linux)
+./build_release.sh
+
+# Con instalación automática de dependencias
+./build_release.sh --install-deps
+
+# Con limpieza previa
+./build_release.sh --clean
+```
+
+This script:
+- ✅ Uses optimized compiler flags (`-O=z`, `lto`, `strip`)
+- ✅ Generates smaller, cleaner binaries
+- ✅ Cross-compiles for Windows (x86_64-pc-windows-gnu)
+- ✅ Calculates SHA256 hash for verification
+- ✅ Reduces antivirus false positives
 
 ### Cross-compilation for Windows (from Linux/macOS)
 
