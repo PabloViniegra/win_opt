@@ -1,5 +1,14 @@
 use std::process::Command;
 
+/// Helper para pluralización correcta en español
+fn pluralize(count: u64, singular: &str, plural: &str) -> String {
+    if count == 1 {
+        format!("{} {}", count, singular)
+    } else {
+        format!("{} {}", count, plural)
+    }
+}
+
 /// Formatea el tiempo de actividad del sistema
 pub fn format_uptime(uptime: u64) -> String {
     let seconds = uptime;
@@ -8,13 +17,22 @@ pub fn format_uptime(uptime: u64) -> String {
     let minutes = (seconds % 3600) / 60;
 
     if days > 0 {
-        format!("{} días, {} horas, {} minutos", days, hours, minutes)
+        format!(
+            "{}, {}, {}",
+            pluralize(days, "día", "días"),
+            pluralize(hours, "hora", "horas"),
+            pluralize(minutes, "minuto", "minutos")
+        )
     } else if hours > 0 {
-        format!("{} horas, {} minutos", hours, minutes)
+        format!(
+            "{}, {}",
+            pluralize(hours, "hora", "horas"),
+            pluralize(minutes, "minuto", "minutos")
+        )
     } else if minutes > 0 {
-        format!("{} minutos", minutes)
+        pluralize(minutes, "minuto", "minutos")
     } else {
-        format!("{} segundos", seconds)
+        pluralize(seconds, "segundo", "segundos")
     }
 }
 
@@ -34,28 +52,29 @@ mod tests {
     #[test]
     fn test_format_uptime_seconds() {
         assert_eq!(format_uptime(0), "0 segundos");
+        assert_eq!(format_uptime(1), "1 segundo");
         assert_eq!(format_uptime(30), "30 segundos");
         assert_eq!(format_uptime(59), "59 segundos");
     }
 
     #[test]
     fn test_format_uptime_minutes() {
-        assert_eq!(format_uptime(60), "1 minutos");
+        assert_eq!(format_uptime(60), "1 minuto");
         assert_eq!(format_uptime(120), "2 minutos");
         assert_eq!(format_uptime(3540), "59 minutos");
     }
 
     #[test]
     fn test_format_uptime_hours() {
-        assert_eq!(format_uptime(3600), "1 horas, 0 minutos");
-        assert_eq!(format_uptime(3661), "1 horas, 1 minutos");
+        assert_eq!(format_uptime(3600), "1 hora, 0 minutos");
+        assert_eq!(format_uptime(3661), "1 hora, 1 minuto");
         assert_eq!(format_uptime(7200), "2 horas, 0 minutos");
     }
 
     #[test]
     fn test_format_uptime_days() {
-        assert_eq!(format_uptime(86400), "1 días, 0 horas, 0 minutos");
-        assert_eq!(format_uptime(90061), "1 días, 1 horas, 1 minutos");
+        assert_eq!(format_uptime(86400), "1 día, 0 horas, 0 minutos");
+        assert_eq!(format_uptime(90061), "1 día, 1 hora, 1 minuto");
         assert_eq!(format_uptime(172800), "2 días, 0 horas, 0 minutos");
     }
 

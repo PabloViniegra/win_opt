@@ -211,7 +211,7 @@ pub fn execute_optimize(app: &mut crate::app::App) {
 
     for (service, description) in SAFE_SERVICES {
         let service_result = Command::new("sc")
-            .args(["config", service, "start=", "disabled"])
+            .args(["config", service, "start=disabled"])
             .output();
 
         match service_result {
@@ -328,7 +328,7 @@ pub fn execute_privacy(app: &mut crate::app::App) {
 
     for service in TELEMETRY_SERVICES {
         let result = Command::new("sc")
-            .args(["config", service, "start=", "disabled"])
+            .args(["config", service, "start=disabled"])
             .output();
 
         match result {

@@ -53,11 +53,9 @@ pub fn init() -> std::io::Result<()> {
 ///
 /// En Windows, usa %APPDATA%\win_opt\logs
 fn get_log_directory() -> std::io::Result<PathBuf> {
-    let app_data = std::env::var("APPDATA").unwrap_or_else(|_| {
-        std::env::var("USERPROFILE")
-            .map(|p| format!("{}\\AppData\\Roaming", p))
-            .unwrap_or_else(|_| "C:\\ProgramData".to_string())
-    });
+    let app_data = std::env::var("APPDATA")
+        .or_else(|_| std::env::var("USERPROFILE").map(|p| format!("{p}\\AppData\\Roaming")))
+        .unwrap_or_else(|_| "C:\\ProgramData".to_string());
 
     Ok(PathBuf::from(app_data).join("win_opt").join("logs"))
 }

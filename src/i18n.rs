@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 /// Idiomas soportados por la aplicación
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -207,21 +208,22 @@ pub enum I18nKey {
     Info,
 }
 
-/// Sistema de traducciones
+/// HashMap global de traducciones (inicializado una sola vez)
+static TRANSLATIONS: OnceLock<HashMap<(Language, I18nKey), &'static str>> = OnceLock::new();
+
+/// Sistema de traducciones (solo almacena el idioma actual)
 pub struct I18n {
     current_language: Language,
-    translations: HashMap<(Language, I18nKey), &'static str>,
 }
 
 impl I18n {
-    /// Crea un nuevo sistema de i18n con las traducciones cargadas
+    /// Crea un nuevo sistema de i18n
     pub fn new(language: Language) -> Self {
-        let mut i18n = Self {
+        // Inicializa las traducciones globales si aún no están cargadas
+        TRANSLATIONS.get_or_init(Self::init_translations);
+        Self {
             current_language: language,
-            translations: HashMap::new(),
-        };
-        i18n.load_translations();
-        i18n
+        }
     }
 
     /// Cambia el idioma actual
@@ -244,14 +246,15 @@ impl I18n {
 
     /// Obtiene una traducción para la clave especificada
     pub fn t(&self, key: I18nKey) -> &str {
-        self.translations
-            .get(&(self.current_language, key))
+        TRANSLATIONS
+            .get()
+            .and_then(|t| t.get(&(self.current_language, key)))
             .copied()
             .unwrap_or("[MISSING TRANSLATION]")
     }
 
-    /// Carga todas las traducciones
-    fn load_translations(&mut self) {
+    /// Inicializa el HashMap de traducciones (se llama una sola vez)
+    fn init_translations() -> HashMap<(Language, I18nKey), &'static str> {
         use I18nKey::*;
         use Language::*;
 
@@ -260,7 +263,7 @@ impl I18n {
             // App Info
             (AppTitle, "WIN OPT"),
             (AppSubtitle, "Windows 11 Optimizer"),
-            (AppVersion, "v1.1.0"),
+            (AppVersion, "v1.2.0"),
             (MainMenu, "Menú Principal"),
             (OperationsLog, "Registro de Operaciones"),
             // Menu Items
@@ -494,7 +497,7 @@ impl I18n {
             // App Info
             (AppTitle, "WIN OPT"),
             (AppSubtitle, "Windows 11 Optimizer"),
-            (AppVersion, "v1.1.0"),
+            (AppVersion, "v1.2.0"),
             (MainMenu, "Main Menu"),
             (OperationsLog, "Operation Log"),
             // Menu Items
@@ -681,15 +684,20 @@ impl I18n {
             (Info, "Information"),
         ];
 
+        // Crear HashMap e insertar traducciones
+        let mut translations = HashMap::new();
+        
         // Insertar traducciones en español
         for (key, text) in es_translations {
-            self.translations.insert((Spanish, key), text);
+            translations.insert((Spanish, key), text);
         }
 
         // Insertar traducciones en inglés
         for (key, text) in en_translations {
-            self.translations.insert((English, key), text);
+            translations.insert((English, key), text);
         }
+        
+        translations
     }
 }
 

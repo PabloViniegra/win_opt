@@ -843,13 +843,13 @@ impl App {
             .operation_logs
             .iter()
             .map(|log| {
-                // Colorear logs según contenido
-                if log.contains("✅") {
-                    Line::from(vec![Span::raw(log.as_str()).fg(colors.success_color)])
+                // Colorear logs según contenido (optimizado para reducir allocaciones)
+                let span = if log.contains("✅") {
+                    Span::raw(log.as_str()).fg(colors.success_color)
                 } else if log.contains("⚠️") || log.contains("ℹ️") {
-                    Line::from(vec![Span::raw(log.as_str()).fg(colors.warning_color)])
+                    Span::raw(log.as_str()).fg(colors.warning_color)
                 } else if log.contains("❌") || log.contains("⛔") {
-                    Line::from(vec![Span::raw(log.as_str()).fg(colors.error_color)])
+                    Span::raw(log.as_str()).fg(colors.error_color)
                 } else if log.contains("🧹")
                     || log.contains("🌐")
                     || log.contains("🔧")
@@ -857,12 +857,11 @@ impl App {
                     || log.contains("🔄")
                     || log.contains("🔒")
                 {
-                    Line::from(vec![
-                        Span::raw(log.as_str()).fg(colors.brand_primary).bold(),
-                    ])
+                    Span::raw(log.as_str()).fg(colors.brand_primary).bold()
                 } else {
-                    Line::from(vec![Span::raw(log.as_str()).fg(colors.text_primary)])
-                }
+                    Span::raw(log.as_str()).fg(colors.text_primary)
+                };
+                Line::from(span)
             })
             .collect();
 
