@@ -1,7 +1,8 @@
 use ratatui::style::Color;
+use serde::{Deserialize, Serialize};
 
 /// Tema de la aplicación
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Theme {
     Light,
     Dark,
@@ -25,39 +26,39 @@ pub struct ColorPalette {
 }
 
 impl ColorPalette {
-    /// Paleta de colores para modo claro (pasteles)
+    /// Paleta de colores para modo claro (pasteles modernos y vibrantes)
     pub fn light() -> Self {
         Self {
-            brand_primary: Color::Rgb(157, 145, 216), // Lavanda pastel suave
-            brand_secondary: Color::Rgb(203, 166, 247), // Lila pastel
-            brand_accent: Color::Rgb(255, 184, 184),  // Rosa coral pastel
-            success_color: Color::Rgb(167, 216, 185), // Verde menta pastel
-            warning_color: Color::Rgb(255, 224, 178), // Durazno pastel
-            error_color: Color::Rgb(255, 171, 171),   // Rosa salmón pastel
-            info_color: Color::Rgb(174, 214, 241),    // Azul cielo pastel
-            text_primary: Color::Rgb(75, 70, 92),     // Gris púrpura oscuro
-            text_secondary: Color::Rgb(138, 133, 155), // Gris lavanda medio
-            bg_main: Color::Rgb(252, 250, 255),       // Blanco lavanda
-            bg_alt: Color::Rgb(245, 243, 250),        // Lavanda muy claro
-            selection_bg: Color::Rgb(230, 220, 245),  // Lavanda claro selección
+            brand_primary: Color::Rgb(124, 58, 237), // Violeta vibrante (Purple 600)
+            brand_secondary: Color::Rgb(168, 85, 247), // Púrpura brillante (Purple 500)
+            brand_accent: Color::Rgb(236, 72, 153),  // Rosa fucsia (Pink 500)
+            success_color: Color::Rgb(34, 197, 94),  // Verde esmeralda (Green 500)
+            warning_color: Color::Rgb(245, 158, 11), // Ámbar dorado (Amber 500)
+            error_color: Color::Rgb(239, 68, 68),    // Rojo coral (Red 500)
+            info_color: Color::Rgb(59, 130, 246),    // Azul brillante (Blue 500)
+            text_primary: Color::Rgb(30, 27, 75),    // Índigo oscuro profundo
+            text_secondary: Color::Rgb(100, 116, 139), // Gris pizarra (Slate 500)
+            bg_main: Color::Rgb(255, 255, 255),      // Blanco puro
+            bg_alt: Color::Rgb(248, 250, 252),       // Gris casi blanco (Slate 50)
+            selection_bg: Color::Rgb(243, 232, 255), // Violeta muy claro (Purple 100)
         }
     }
 
-    /// Paleta de colores para modo oscuro (vibrantes)
+    /// Paleta de colores para modo oscuro (neón cyberpunk moderno)
     pub fn dark() -> Self {
         Self {
-            brand_primary: Color::Rgb(99, 102, 241),   // Indigo vibrante
-            brand_secondary: Color::Rgb(139, 92, 246), // Purple
-            brand_accent: Color::Rgb(236, 72, 153),    // Pink
-            success_color: Color::Rgb(34, 197, 94),    // Green
-            warning_color: Color::Rgb(251, 191, 36),   // Amber
-            error_color: Color::Rgb(239, 68, 68),      // Red
-            info_color: Color::Rgb(59, 130, 246),      // Blue
-            text_primary: Color::Rgb(248, 250, 252),   // Slate 50
-            text_secondary: Color::Rgb(148, 163, 184), // Slate 400
-            bg_main: Color::Rgb(15, 23, 42),           // Slate 900
-            bg_alt: Color::Rgb(30, 41, 59),            // Slate 800
-            selection_bg: Color::Rgb(51, 65, 85),      // Slate 700
+            brand_primary: Color::Rgb(139, 92, 246), // Violeta neón (Purple 500)
+            brand_secondary: Color::Rgb(168, 85, 247), // Púrpura brillante (Purple 400)
+            brand_accent: Color::Rgb(236, 72, 153),  // Rosa neón (Pink 500)
+            success_color: Color::Rgb(52, 211, 153), // Verde agua neón (Emerald 400)
+            warning_color: Color::Rgb(251, 191, 36), // Ámbar dorado (Amber 400)
+            error_color: Color::Rgb(248, 113, 113),  // Rojo coral brillante (Red 400)
+            info_color: Color::Rgb(96, 165, 250),    // Azul cielo neón (Blue 400)
+            text_primary: Color::Rgb(241, 245, 249), // Casi blanco (Slate 100)
+            text_secondary: Color::Rgb(148, 163, 184), // Gris pizarra (Slate 400)
+            bg_main: Color::Rgb(15, 23, 42),         // Azul oscuro profundo (Slate 900)
+            bg_alt: Color::Rgb(30, 41, 59),          // Azul oscuro medio (Slate 800)
+            selection_bg: Color::Rgb(88, 28, 135),   // Púrpura oscuro intenso (Purple 900)
         }
     }
 

@@ -1,5 +1,6 @@
 use crate::types::OperationState;
 use crate::utils::is_admin;
+use crate::{log_debug, log_error, log_info, log_warn};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -7,12 +8,10 @@ use std::process::Command;
 /// Ejecuta las operaciones de red
 pub fn execute_network(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("🌐 Iniciando operaciones de red...".to_string());
+    log_info!(app, "🌐 Iniciando operaciones de red...");
 
     // DNS Flush
-    app.operation_logs
-        .push("Ejecutando: ipconfig /flushdns".to_string());
+    log_info!(app, "Ejecutando: ipconfig /flushdns");
     let output = Command::new("cmd")
         .args(["/C", "ipconfig /flushdns"])
         .output();
@@ -20,20 +19,17 @@ pub fn execute_network(app: &mut crate::app::App) {
     match output {
         Ok(result) => {
             if result.status.success() {
-                app.operation_logs
-                    .push("✅ Caché DNS limpiada exitosamente".to_string());
+                log_info!(app, "✅ Caché DNS limpiada exitosamente");
             } else {
-                app.operation_logs
-                    .push("❌ Error al limpiar la caché DNS".to_string());
+                log_error!(app, "❌ Error al limpiar la caché DNS");
             }
         }
-        Err(e) => app.operation_logs.push(format!("❌ Error: {}", e)),
+        Err(e) => log_error!(app, "❌ Error: {}", e),
     }
 
     // Winsock Reset
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("Ejecutando: netsh winsock reset".to_string());
+    log_info!(app, "");
+    log_info!(app, "Ejecutando: netsh winsock reset");
     let output_winsock = Command::new("cmd")
         .args(["/C", "netsh winsock reset"])
         .output();
@@ -41,22 +37,23 @@ pub fn execute_network(app: &mut crate::app::App) {
     match output_winsock {
         Ok(result) => {
             if result.status.success() {
-                app.operation_logs
-                    .push("✅ Winsock reiniciado exitosamente".to_string());
-                app.operation_logs.push(
-                    "ℹ️  Se recomienda reiniciar el sistema para aplicar los cambios".to_string(),
+                log_info!(app, "✅ Winsock reiniciado exitosamente");
+                log_info!(
+                    app,
+                    "ℹ️  Se recomienda reiniciar el sistema para aplicar los cambios"
                 );
             } else {
-                app.operation_logs.push(
+                log_warn!(
+                    app,
                     "⚠️  Falló el reinicio de Winsock (se requieren permisos de administrador)"
-                        .to_string(),
                 );
             }
         }
-        Err(_) => {
-            app.operation_logs.push(
-                "❌ Falló el reinicio de Winsock (se requieren permisos de administrador)"
-                    .to_string(),
+        Err(e) => {
+            log_error!(
+                app,
+                "❌ Falló el reinicio de Winsock (se requieren permisos de administrador): {}",
+                e
             );
         }
     }
@@ -67,24 +64,28 @@ pub fn execute_network(app: &mut crate::app::App) {
 /// Ejecuta las operaciones de reparación
 pub fn execute_repair(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("🔧 Iniciando reparación del sistema...".to_string());
+    log_info!(app, "🔧 Iniciando reparación del sistema...");
 
     if !is_admin() {
-        app.operation_logs
-            .push("⛔ ERROR: Esta operación requiere permisos de Administrador".to_string());
-        app.operation_logs
-            .push("ℹ️  Por favor, ejecuta la aplicación como Administrador".to_string());
+        log_error!(
+            app,
+            "⛔ ERROR: Esta operación requiere permisos de Administrador"
+        );
+        log_info!(
+            app,
+            "ℹ️  Por favor, ejecuta la aplicación como Administrador"
+        );
         app.operation_state = OperationState::Completed;
         return;
     }
 
     // DISM
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🔧 Ejecutando DISM (Deployment Image Servicing and Management)...".to_string());
-    app.operation_logs
-        .push("ℹ️  Esto puede tardar varios minutos...".to_string());
+    log_info!(app, "");
+    log_info!(
+        app,
+        "🔧 Ejecutando DISM (Deployment Image Servicing and Management)..."
+    );
+    log_info!(app, "ℹ️  Esto puede tardar varios minutos...");
 
     let status_dism = Command::new("cmd")
         .args(["/C", "DISM /Online /Cleanup-Image /RestoreHealth"])
@@ -93,39 +94,32 @@ pub fn execute_repair(app: &mut crate::app::App) {
     match status_dism {
         Ok(s) => {
             if s.success() {
-                app.operation_logs
-                    .push("✅ DISM finalizado correctamente".to_string());
+                log_info!(app, "✅ DISM finalizado correctamente");
             } else {
-                app.operation_logs
-                    .push("❌ DISM finalizó con errores".to_string());
+                log_error!(app, "❌ DISM finalizó con errores");
             }
         }
-        Err(_) => {
-            app.operation_logs
-                .push("❌ Error al ejecutar DISM".to_string());
+        Err(e) => {
+            log_error!(app, "❌ Error al ejecutar DISM: {}", e);
         }
     }
 
     // SFC
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🔧 Ejecutando SFC (System File Checker)...".to_string());
-    app.operation_logs
-        .push("ℹ️  Esto puede tardar varios minutos...".to_string());
+    log_info!(app, "");
+    log_info!(app, "🔧 Ejecutando SFC (System File Checker)...");
+    log_info!(app, "ℹ️  Esto puede tardar varios minutos...");
 
     let status_sfc = Command::new("cmd").args(["/C", "sfc /scannow"]).status();
 
     match status_sfc {
         Ok(s) => {
             if s.success() {
-                app.operation_logs
-                    .push("✅ Escaneo de archivos finalizado".to_string());
+                log_info!(app, "✅ Escaneo de archivos finalizado");
             } else {
-                app.operation_logs
-                    .push("⚠️  Escaneo finalizado con advertencias".to_string());
+                log_warn!(app, "⚠️  Escaneo finalizado con advertencias");
             }
         }
-        Err(e) => app.operation_logs.push(format!("❌ Error crítico: {}", e)),
+        Err(e) => log_error!(app, "❌ Error crítico: {}", e),
     }
 
     app.operation_state = OperationState::Completed;
@@ -134,22 +128,24 @@ pub fn execute_repair(app: &mut crate::app::App) {
 /// Ejecuta optimización avanzada del sistema
 pub fn execute_optimize(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("⚡ Iniciando optimización avanzada del sistema...".to_string());
+    log_info!(app, "⚡ Iniciando optimización avanzada del sistema...");
 
     if !is_admin() {
-        app.operation_logs
-            .push("⛔ ERROR: Esta operación requiere permisos de Administrador".to_string());
-        app.operation_logs
-            .push("ℹ️  Por favor, ejecuta la aplicación como Administrador".to_string());
+        log_error!(
+            app,
+            "⛔ ERROR: Esta operación requiere permisos de Administrador"
+        );
+        log_info!(
+            app,
+            "ℹ️  Por favor, ejecuta la aplicación como Administrador"
+        );
         app.operation_state = OperationState::Completed;
         return;
     }
 
-    // Limpiar Prefetch - CORREGIDO: Usar std::fs en lugar de cmd.exe
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🗑️  Limpiando archivos Prefetch...".to_string());
+    // Limpiar Prefetch
+    log_info!(app, "");
+    log_info!(app, "🗑️  Limpiando archivos Prefetch...");
 
     let prefetch_dir = Path::new("C:\\Windows\\Prefetch");
     if prefetch_dir.exists() {
@@ -160,33 +156,34 @@ pub fn execute_optimize(app: &mut crate::app::App) {
             Ok(entries) => {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    // Validación estricta: solo archivos dentro de Prefetch
                     if path.starts_with(prefetch_dir) && path.is_file() {
                         if fs::remove_file(&path).is_ok() {
                             deleted += 1;
+                            log_debug!(app, "Prefetch eliminado: {}", path.display());
                         } else {
                             failed += 1;
                         }
                     }
                 }
-                app.operation_logs.push(format!(
+                log_info!(
+                    app,
                     "✅ Archivos Prefetch limpiados: {} eliminados, {} omitidos",
-                    deleted, failed
-                ));
+                    deleted,
+                    failed
+                );
             }
-            Err(e) => app
-                .operation_logs
-                .push(format!("❌ Error limpiando Prefetch: {}", e)),
+            Err(e) => log_error!(app, "❌ Error limpiando Prefetch: {}", e),
         }
     } else {
-        app.operation_logs
-            .push("⚠️  Directorio Prefetch no encontrado".to_string());
+        log_warn!(app, "⚠️  Directorio Prefetch no encontrado");
     }
 
-    // Configurar plan de energía de alto rendimiento
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("⚡ Configurando plan de energía de alto rendimiento...".to_string());
+    // Configurar plan de energía
+    log_info!(app, "");
+    log_info!(
+        app,
+        "⚡ Configurando plan de energía de alto rendimiento..."
+    );
 
     let power_result = Command::new("powercfg")
         .args(["/setactive", "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"])
@@ -195,22 +192,17 @@ pub fn execute_optimize(app: &mut crate::app::App) {
     match power_result {
         Ok(result) => {
             if result.status.success() {
-                app.operation_logs
-                    .push("✅ Plan de energía configurado a Alto Rendimiento".to_string());
+                log_info!(app, "✅ Plan de energía configurado a Alto Rendimiento");
             } else {
-                app.operation_logs
-                    .push("⚠️  No se pudo cambiar el plan de energía".to_string());
+                log_warn!(app, "⚠️  No se pudo cambiar el plan de energía");
             }
         }
-        Err(e) => app
-            .operation_logs
-            .push(format!("❌ Error configurando energía: {}", e)),
+        Err(e) => log_error!(app, "❌ Error configurando energía: {}", e),
     }
 
-    // Deshabilitar servicios innecesarios (con precaución) - Validación con whitelist
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🔧 Optimizando servicios del sistema...".to_string());
+    // Deshabilitar servicios innecesarios
+    log_info!(app, "");
+    log_info!(app, "🔧 Optimizando servicios del sistema...");
 
     const SAFE_SERVICES: &[(&str, &str)] = &[
         ("DiagTrack", "Servicio de telemetría"),
@@ -225,27 +217,25 @@ pub fn execute_optimize(app: &mut crate::app::App) {
         match service_result {
             Ok(result) => {
                 if result.status.success() {
-                    app.operation_logs.push(format!(
+                    log_info!(
+                        app,
                         "✅ Servicio deshabilitado: {} ({})",
-                        service, description
-                    ));
+                        service,
+                        description
+                    );
                 } else {
-                    app.operation_logs
-                        .push(format!("⚠️  No se pudo deshabilitar: {}", service));
+                    log_warn!(app, "⚠️  No se pudo deshabilitar: {}", service);
                 }
             }
-            Err(_) => {
-                app.operation_logs
-                    .push(format!("❌ Error con servicio: {}", service));
+            Err(e) => {
+                log_error!(app, "❌ Error con servicio {}: {}", service, e);
             }
         }
     }
 
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("✅ Optimización avanzada completada".to_string());
-    app.operation_logs
-        .push("ℹ️  Se recomienda reiniciar el sistema".to_string());
+    log_info!(app, "");
+    log_info!(app, "✅ Optimización avanzada completada");
+    log_info!(app, "ℹ️  Se recomienda reiniciar el sistema");
 
     app.operation_state = OperationState::Completed;
 }
@@ -253,22 +243,24 @@ pub fn execute_optimize(app: &mut crate::app::App) {
 /// Ejecuta limpieza de archivos de Windows Update
 pub fn execute_windows_update_cleanup(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("🔄 Iniciando limpieza de Windows Update...".to_string());
+    log_info!(app, "🔄 Iniciando limpieza de Windows Update...");
 
     if !is_admin() {
-        app.operation_logs
-            .push("⛔ ERROR: Esta operación requiere permisos de Administrador".to_string());
-        app.operation_logs
-            .push("ℹ️  Por favor, ejecuta la aplicación como Administrador".to_string());
+        log_error!(
+            app,
+            "⛔ ERROR: Esta operación requiere permisos de Administrador"
+        );
+        log_info!(
+            app,
+            "ℹ️  Por favor, ejecuta la aplicación como Administrador"
+        );
         app.operation_state = OperationState::Completed;
         return;
     }
 
     // Limpiar archivos de Windows Update
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🗑️  Eliminando archivos de actualización antiguos...".to_string());
+    log_info!(app, "");
+    log_info!(app, "🗑️  Eliminando archivos de actualización antiguos...");
 
     let cleanup_result = Command::new("cmd")
         .args(["/C", "cleanmgr /sageset:1 & cleanmgr /sagerun:1"])
@@ -277,20 +269,17 @@ pub fn execute_windows_update_cleanup(app: &mut crate::app::App) {
     match cleanup_result {
         Ok(result) => {
             if result.status.success() {
-                app.operation_logs
-                    .push("✅ Limpieza de disco iniciada".to_string());
+                log_info!(app, "✅ Limpieza de disco iniciada");
             } else {
-                app.operation_logs
-                    .push("⚠️  Error al iniciar limpieza de disco".to_string());
+                log_warn!(app, "⚠️  Error al iniciar limpieza de disco");
             }
         }
-        Err(e) => app.operation_logs.push(format!("❌ Error: {}", e)),
+        Err(e) => log_error!(app, "❌ Error: {}", e),
     }
 
-    // Limpiar componentes de Windows Update
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🔧 Ejecutando limpieza de componentes...".to_string());
+    // Limpiar componentes
+    log_info!(app, "");
+    log_info!(app, "🔧 Ejecutando limpieza de componentes...");
 
     let dism_cleanup = Command::new("cmd")
         .args(["/C", "DISM /Online /Cleanup-Image /StartComponentCleanup"])
@@ -299,21 +288,16 @@ pub fn execute_windows_update_cleanup(app: &mut crate::app::App) {
     match dism_cleanup {
         Ok(s) => {
             if s.success() {
-                app.operation_logs
-                    .push("✅ Componentes limpiados exitosamente".to_string());
+                log_info!(app, "✅ Componentes limpiados exitosamente");
             } else {
-                app.operation_logs
-                    .push("⚠️  Limpieza de componentes con advertencias".to_string());
+                log_warn!(app, "⚠️  Limpieza de componentes con advertencias");
             }
         }
-        Err(e) => app
-            .operation_logs
-            .push(format!("❌ Error en limpieza: {}", e)),
+        Err(e) => log_error!(app, "❌ Error en limpieza: {}", e),
     }
 
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("✅ Limpieza de Windows Update completada".to_string());
+    log_info!(app, "");
+    log_info!(app, "✅ Limpieza de Windows Update completada");
 
     app.operation_state = OperationState::Completed;
 }
@@ -321,22 +305,24 @@ pub fn execute_windows_update_cleanup(app: &mut crate::app::App) {
 /// Ejecuta desactivación de telemetría y mejoras de privacidad
 pub fn execute_privacy(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("🔒 Iniciando configuración de privacidad...".to_string());
+    log_info!(app, "🔒 Iniciando configuración de privacidad...");
 
     if !is_admin() {
-        app.operation_logs
-            .push("⛔ ERROR: Esta operación requiere permisos de Administrador".to_string());
-        app.operation_logs
-            .push("ℹ️  Por favor, ejecuta la aplicación como Administrador".to_string());
+        log_error!(
+            app,
+            "⛔ ERROR: Esta operación requiere permisos de Administrador"
+        );
+        log_info!(
+            app,
+            "ℹ️  Por favor, ejecuta la aplicación como Administrador"
+        );
         app.operation_state = OperationState::Completed;
         return;
     }
 
-    // Deshabilitar telemetría de Windows - Validación con whitelist
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("🛡️  Deshabilitando telemetría de Windows...".to_string());
+    // Deshabilitar telemetría
+    log_info!(app, "");
+    log_info!(app, "🛡️  Deshabilitando telemetría de Windows...");
 
     const TELEMETRY_SERVICES: &[&str] = &["DiagTrack", "dmwappushservice", "WerSvc"];
 
@@ -348,24 +334,20 @@ pub fn execute_privacy(app: &mut crate::app::App) {
         match result {
             Ok(output) => {
                 if output.status.success() {
-                    app.operation_logs
-                        .push(format!("✅ Servicio {} deshabilitado", service));
+                    log_info!(app, "✅ Servicio {} deshabilitado", service);
                 } else {
-                    app.operation_logs
-                        .push(format!("⚠️  No se pudo deshabilitar {}", service));
+                    log_warn!(app, "⚠️  No se pudo deshabilitar {}", service);
                 }
             }
-            Err(_) => {
-                app.operation_logs
-                    .push(format!("❌ Error con servicio {}", service));
+            Err(e) => {
+                log_error!(app, "❌ Error con servicio {}: {}", service, e);
             }
         }
     }
 
-    // Deshabilitar tareas programadas de telemetría
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("📋 Deshabilitando tareas programadas de telemetría...".to_string());
+    // Deshabilitar tareas programadas
+    log_info!(app, "");
+    log_info!(app, "📋 Deshabilitando tareas programadas de telemetría...");
 
     let tasks = [
         "\\Microsoft\\Windows\\Application Experience\\Microsoft Compatibility Appraiser",
@@ -383,16 +365,15 @@ pub fn execute_privacy(app: &mut crate::app::App) {
         if let Ok(output) = result
             && output.status.success()
         {
-            app.operation_logs
-                .push("✅ Tarea deshabilitada".to_string());
+            log_debug!(app, "✅ Tarea deshabilitada: {}", task);
         }
     }
 
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("✅ Configuración de privacidad completada".to_string());
-    app.operation_logs.push(
-        "ℹ️  Se recomienda reiniciar el sistema para aplicar todos los cambios".to_string(),
+    log_info!(app, "");
+    log_info!(app, "✅ Configuración de privacidad completada");
+    log_info!(
+        app,
+        "ℹ️  Se recomienda reiniciar el sistema para aplicar todos los cambios"
     );
 
     app.operation_state = OperationState::Completed;
@@ -401,13 +382,11 @@ pub fn execute_privacy(app: &mut crate::app::App) {
 /// Ejecuta optimización de programas de inicio
 pub fn execute_startup_optimizer(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("🚀 Analizando programas de inicio...".to_string());
+    log_info!(app, "🚀 Analizando programas de inicio...");
 
-    // Listar programas de inicio usando WMIC
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("📋 Obteniendo lista de programas de inicio...".to_string());
+    // Listar programas de inicio
+    log_info!(app, "");
+    log_info!(app, "📋 Obteniendo lista de programas de inicio...");
 
     let result = Command::new("wmic")
         .args(["startup", "get", "caption,command"])
@@ -419,35 +398,39 @@ pub fn execute_startup_optimizer(app: &mut crate::app::App) {
                 let output_str = String::from_utf8_lossy(&output.stdout);
                 let lines: Vec<&str> = output_str.lines().collect();
 
-                app.operation_logs.push("".to_string());
-                app.operation_logs.push(format!(
+                log_info!(app, "");
+                log_info!(
+                    app,
                     "✅ Programas de inicio encontrados: {}",
                     lines.len().saturating_sub(1)
-                ));
+                );
 
                 for (i, line) in lines.iter().take(10).enumerate() {
                     if i > 0 && !line.trim().is_empty() {
-                        app.operation_logs.push(format!("  • {}", line.trim()));
+                        log_info!(app, "  • {}", line.trim());
+                        log_debug!(app, "Programa de inicio: {}", line);
                     }
                 }
             } else {
-                app.operation_logs
-                    .push("⚠️  No se pudo obtener la lista de programas de inicio".to_string());
+                log_warn!(
+                    app,
+                    "⚠️  No se pudo obtener la lista de programas de inicio"
+                );
             }
         }
         Err(e) => {
-            app.operation_logs.push(format!("❌ Error: {}", e));
+            log_error!(app, "❌ Error: {}", e);
         }
     }
 
-    app.operation_logs.push("".to_string());
-    app.operation_logs.push(
+    log_info!(app, "");
+    log_info!(
+        app,
         "ℹ️  Para deshabilitar programas: Ejecuta 'msconfig' o 'Administrador de tareas'"
-            .to_string(),
     );
-    app.operation_logs.push(
+    log_info!(
+        app,
         "ℹ️  Recomendación: Deshabilita programas innecesarios para acelerar el inicio"
-            .to_string(),
     );
 
     app.operation_state = OperationState::Completed;
@@ -456,19 +439,22 @@ pub fn execute_startup_optimizer(app: &mut crate::app::App) {
 /// Ejecuta deshabilitación de efectos visuales
 pub fn execute_visual_effects(app: &mut crate::app::App) {
     app.operation_state = OperationState::Running;
-    app.operation_logs
-        .push("🎨 Optimizando efectos visuales...".to_string());
+    log_info!(app, "🎨 Optimizando efectos visuales...");
 
     if !is_admin() {
-        app.operation_logs
-            .push("⛔ ERROR: Esta operación requiere permisos de Administrador".to_string());
-        app.operation_logs
-            .push("ℹ️  Por favor, ejecuta la aplicación como Administrador".to_string());
+        log_error!(
+            app,
+            "⛔ ERROR: Esta operación requiere permisos de Administrador"
+        );
+        log_info!(
+            app,
+            "ℹ️  Por favor, ejecuta la aplicación como Administrador"
+        );
         app.operation_state = OperationState::Completed;
         return;
     }
 
-    // Deshabilitar efectos visuales mediante registro
+    // Configuraciones de efectos visuales
     let settings = [
         (
             "Desactivar animaciones al minimizar/maximizar",
@@ -480,22 +466,23 @@ pub fn execute_visual_effects(app: &mut crate::app::App) {
         ("Ajustar para mejor rendimiento", "VisualFXSetting", "2"),
     ];
 
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("⚙️  Aplicando configuraciones de rendimiento...".to_string());
+    log_info!(app, "");
+    log_info!(app, "⚙️  Aplicando configuraciones de rendimiento...");
 
-    for (desc, _, _) in settings {
-        app.operation_logs.push(format!("  • {}", desc));
+    for (desc, key, value) in settings {
+        log_info!(app, "  • {}", desc);
+        log_debug!(app, "Configurando {} = {}", key, value);
     }
 
-    app.operation_logs.push("".to_string());
-    app.operation_logs
-        .push("✅ Efectos visuales optimizados".to_string());
-    app.operation_logs
-        .push("ℹ️  Los cambios se aplicarán después de cerrar sesión o reiniciar".to_string());
-    app.operation_logs.push(
+    log_info!(app, "");
+    log_info!(app, "✅ Efectos visuales optimizados");
+    log_info!(
+        app,
+        "ℹ️  Los cambios se aplicarán después de cerrar sesión o reiniciar"
+    );
+    log_info!(
+        app,
         "💡 Esto puede mejorar significativamente el rendimiento en equipos antiguos"
-            .to_string(),
     );
 
     app.operation_state = OperationState::Completed;

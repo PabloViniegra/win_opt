@@ -15,7 +15,9 @@
       "mcp__serena__search_for_pattern",
       "mcp__serena__replace_content",
       "Bash(cargo check:*)",
-      "Bash(cargo tree:*)"
+      "Bash(cargo tree:*)",
+      "mcp__serena__get_symbols_overview",
+      "mcp__serena__create_text_file"
     ]
   },
   "enableAllProjectMcpServers": true,

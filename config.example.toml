@@ -1,0 +1,38 @@
+# Archivo de configuración de ejemplo para win_opt
+# Este archivo muestra todas las opciones de configuración disponibles
+# 
+# Ubicación del archivo de configuración en Windows:
+# %APPDATA%\win_opt\config.toml
+#
+# Para usar este ejemplo, cópialo a la ubicación indicada arriba
+# o ejecuta la aplicación y la configuración se creará automáticamente
+
+[appearance]
+# Tema de la aplicación: "Light" o "Dark"
+theme = "Dark"
+
+# Recordar el último tema usado al cerrar la aplicación
+remember_theme = true
+
+[language]
+# Idioma de la aplicación: "Spanish" o "English"
+language = "Spanish"
+
+# Recordar el último idioma usado al cerrar la aplicación
+remember_language = true
+
+[logging]
+# Nivel de logging: "trace", "debug", "info", "warn", "error"
+# - trace: Máximo detalle (útil solo para debugging profundo)
+# - debug: Información detallada de depuración
+# - info: Información general de operaciones (recomendado)
+# - warn: Solo advertencias y errores
+# - error: Solo errores críticos
+level = "info"
+
+# Habilitar logging a archivo
+# Los logs se guardan en: %APPDATA%\win_opt\logs\
+file_logging = true
+
+# Días de retención de logs (los logs más antiguos se eliminan)
+retention_days = 7
