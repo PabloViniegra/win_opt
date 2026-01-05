@@ -1,6 +1,6 @@
 [package]
 name = "win_opt"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 authors = ["pablovpmadrid@gmail.com"]
 description = "Herramienta de optimización y mantenimiento para Windows 11"
@@ -14,6 +14,7 @@ categories = ["command-line-utilities"]
 ratatui = "0.29"
 crossterm = "0.28"
 sysinfo = "0.30"
+thiserror = "2.0.17"
 
 # Perfil optimizado para Release - Reduce detecciones de antivirus
 [profile.release]

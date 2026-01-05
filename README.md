@@ -8,26 +8,38 @@ A comprehensive Windows 11 optimization and maintenance tool with a modern Termi
 
 ## Features
 
-### System Maintenance
+### 🗑️ Disk Space Liberation
 - **Temporary Files Cleanup**: Remove system temporary files to free up disk space
+- **Recycle Bin**: Empty the recycle bin completely and instantly
+- **Browser Cache Cleanup**: Clean cache from Chrome, Firefox, and Microsoft Edge
+- **System Logs Cleanup**: Remove log files (.log, .txt, .etl) from Windows directories
 - **Windows Update Cleanup**: Clean Windows Update cache and component store using DISM
-- **Network Utilities**: Flush DNS cache and reset Winsock catalog
-- **System Repair**: Run DISM and SFC (System File Checker) for integrity verification
 
-### Performance Optimization
+### ⚡ Performance Optimization
 - **Advanced Optimization**:
   - Prefetch files cleanup
   - High-performance power plan activation
   - Telemetry service management (DiagTrack, SysMain)
+- **Startup Programs Optimizer**: List and analyze programs that run at Windows startup
+- **Visual Effects Optimization**: Disable unnecessary animations and transparency for better performance
 
-### Privacy & Security
+### 🔧 System Maintenance
+- **Network Utilities**: Flush DNS cache and reset Winsock catalog
+- **System Repair**: Run DISM and SFC (System File Checker) for integrity verification
+
+### 🔒 Privacy & Security
 - **Privacy Configuration**:
   - Disable telemetry services (DiagTrack, dmwappushservice, WerSvc)
   - Disable telemetry-related scheduled tasks
   - Reduce data collection
 
-### System Information
+### 💻 System Information
 - Display comprehensive system information including OS, CPU, RAM, and disk usage
+
+### 🎨 User Interface
+- **Dark/Light Theme Toggle**: Switch between dark mode and light pastel mode using Tab key
+- **Modern TUI Design**: Clean, intuitive terminal user interface
+- **Real-time Operation Logs**: See every action the tool performs
 
 ## Requirements
 
@@ -135,14 +147,26 @@ You can verify the integrity of the official releases:
 
 ### Menu Options
 
-1. **Limpieza de Archivos Temporales** - Clean temporary files
-2. **Limpieza de Windows Update** - Clean Windows Update cache
-3. **Limpieza de Red** - Flush DNS and reset Winsock
-4. **Reparación del Sistema** - Run system integrity checks
-5. **Optimización Avanzada** - Advanced system optimization
-6. **Privacidad y Telemetría** - Privacy and telemetry configuration
-7. **Información del Sistema** - Display system information
-8. **Salir** - Exit application
+**Disk Space Liberation:**
+1. **Archivos Temporales** - Clean system temporary files
+2. **Papelera de Reciclaje** - Empty recycle bin completely
+3. **Caché de Navegadores** - Clean Chrome, Firefox, Edge cache
+4. **Logs del Sistema** - Remove system log files
+5. **Windows Update** - Clean Windows Update cache
+
+**Performance Optimization:**
+6. **Optimización Avanzada** - Services, power, and prefetch optimization
+7. **Programas de Inicio** - List and analyze startup programs
+8. **Efectos Visuales** - Disable animations for better performance
+
+**System Maintenance:**
+9. **Red** - DNS flush & Winsock reset
+10. **Reparación** - DISM & SFC system repair
+11. **Privacidad** - Disable telemetry and data collection
+
+**Information & Exit:**
+12. **Info del Sistema** - Display hardware details
+13. **Salir** - Exit application
 
 ## Building from Source
 
@@ -330,6 +354,6 @@ Contributions are welcome! Please ensure:
 
 ## Version
 
-Current version: **1.0.0**
+Current version: **1.1.0**
 
 See [RELEASE_NOTES.md](RELEASE_NOTES.md) for version history and changelog.
