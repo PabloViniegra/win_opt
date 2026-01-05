@@ -11,18 +11,75 @@ use std::fs;
 use std::process::Command;
 use sysinfo::{Disks, System};
 
-// Paleta de colores moderna
-const BRAND_PRIMARY: Color = Color::Rgb(99, 102, 241); // Indigo vibrante
-const BRAND_SECONDARY: Color = Color::Rgb(139, 92, 246); // Purple
-const BRAND_ACCENT: Color = Color::Rgb(236, 72, 153); // Pink
-const SUCCESS_COLOR: Color = Color::Rgb(34, 197, 94); // Green
-const WARNING_COLOR: Color = Color::Rgb(251, 191, 36); // Amber
-const ERROR_COLOR: Color = Color::Rgb(239, 68, 68); // Red
-const INFO_COLOR: Color = Color::Rgb(59, 130, 246); // Blue
-const TEXT_PRIMARY: Color = Color::Rgb(248, 250, 252); // Slate 50
-const TEXT_SECONDARY: Color = Color::Rgb(148, 163, 184); // Slate 400
-const BG_DARKER: Color = Color::Rgb(15, 23, 42); // Slate 900
-const BG_DARK: Color = Color::Rgb(30, 41, 59); // Slate 800
+/// Tema de la aplicación
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Theme {
+    Light,
+    Dark,
+}
+
+/// Paleta de colores
+#[derive(Debug, Clone, Copy)]
+struct ColorPalette {
+    brand_primary: Color,
+    brand_secondary: Color,
+    brand_accent: Color,
+    success_color: Color,
+    warning_color: Color,
+    error_color: Color,
+    info_color: Color,
+    text_primary: Color,
+    text_secondary: Color,
+    bg_main: Color,
+    bg_alt: Color,
+    selection_bg: Color,
+}
+
+impl ColorPalette {
+    /// Paleta de colores para modo claro (pasteles)
+    fn light() -> Self {
+        Self {
+            brand_primary: Color::Rgb(157, 145, 216), // Lavanda pastel suave
+            brand_secondary: Color::Rgb(203, 166, 247), // Lila pastel
+            brand_accent: Color::Rgb(255, 184, 184),  // Rosa coral pastel
+            success_color: Color::Rgb(167, 216, 185), // Verde menta pastel
+            warning_color: Color::Rgb(255, 224, 178), // Durazno pastel
+            error_color: Color::Rgb(255, 171, 171),   // Rosa salmón pastel
+            info_color: Color::Rgb(174, 214, 241),    // Azul cielo pastel
+            text_primary: Color::Rgb(75, 70, 92),     // Gris púrpura oscuro
+            text_secondary: Color::Rgb(138, 133, 155), // Gris lavanda medio
+            bg_main: Color::Rgb(252, 250, 255),       // Blanco lavanda
+            bg_alt: Color::Rgb(245, 243, 250),        // Lavanda muy claro
+            selection_bg: Color::Rgb(230, 220, 245),  // Lavanda claro selección
+        }
+    }
+
+    /// Paleta de colores para modo oscuro (vibrantes)
+    fn dark() -> Self {
+        Self {
+            brand_primary: Color::Rgb(99, 102, 241),   // Indigo vibrante
+            brand_secondary: Color::Rgb(139, 92, 246), // Purple
+            brand_accent: Color::Rgb(236, 72, 153),    // Pink
+            success_color: Color::Rgb(34, 197, 94),    // Green
+            warning_color: Color::Rgb(251, 191, 36),   // Amber
+            error_color: Color::Rgb(239, 68, 68),      // Red
+            info_color: Color::Rgb(59, 130, 246),      // Blue
+            text_primary: Color::Rgb(248, 250, 252),   // Slate 50
+            text_secondary: Color::Rgb(148, 163, 184), // Slate 400
+            bg_main: Color::Rgb(15, 23, 42),           // Slate 900
+            bg_alt: Color::Rgb(30, 41, 59),            // Slate 800
+            selection_bg: Color::Rgb(51, 65, 85),      // Slate 700
+        }
+    }
+
+    /// Obtiene la paleta según el tema
+    fn from_theme(theme: Theme) -> Self {
+        match theme {
+            Theme::Light => Self::light(),
+            Theme::Dark => Self::dark(),
+        }
+    }
+}
 
 /// Vista actual de la aplicación
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +118,8 @@ struct App {
     should_quit: bool,
     /// Scroll vertical para logs
     scroll_offset: u16,
+    /// Tema actual de la aplicación
+    theme: Theme,
 }
 
 /// Estadísticas de limpieza
@@ -81,11 +140,25 @@ impl Default for App {
             clean_stats: CleanStats::default(),
             should_quit: false,
             scroll_offset: 0,
+            theme: Theme::Dark, // Iniciar en modo oscuro
         }
     }
 }
 
 impl App {
+    /// Obtiene la paleta de colores según el tema actual
+    fn get_colors(&self) -> ColorPalette {
+        ColorPalette::from_theme(self.theme)
+    }
+
+    /// Alterna entre tema claro y oscuro
+    fn toggle_theme(&mut self) {
+        self.theme = match self.theme {
+            Theme::Light => Theme::Dark,
+            Theme::Dark => Theme::Light,
+        };
+    }
+
     /// Ejecuta el loop principal de la aplicación
     fn run(mut self, mut terminal: DefaultTerminal) -> std::io::Result<()> {
         while !self.should_quit {
@@ -171,6 +244,9 @@ impl App {
             KeyCode::Char('q') | KeyCode::Esc => {
                 self.should_quit = true;
             }
+            KeyCode::Tab => {
+                self.toggle_theme();
+            }
             _ => {}
         }
     }
@@ -188,13 +264,17 @@ impl App {
             KeyCode::Up => {
                 self.scroll_offset = self.scroll_offset.saturating_sub(1);
             }
+            KeyCode::Tab => {
+                self.toggle_theme();
+            }
             _ => {}
         }
     }
 
     /// Dibuja el menú principal
     fn draw_main_menu(&mut self, frame: &mut Frame) {
-        let main_block = Block::default().style(Style::default().bg(BG_DARKER));
+        let colors = self.get_colors();
+        let main_block = Block::default().style(Style::default().bg(colors.bg_main));
         frame.render_widget(main_block, frame.area());
 
         let chunks = Layout::default()
@@ -217,76 +297,79 @@ impl App {
         self.render_modern_footer(frame, chunks[2]);
     }
 
-    /// Renderiza un banner moderno con efectos visuales
+    /// Renderiza un banner suave con diseño pastel
     fn render_modern_banner(&self, frame: &mut Frame, area: Rect) {
+        let colors = self.get_colors();
         let banner_lines = vec![
             Line::from(vec![
-                Span::raw("  ╔═══════════════════════════════════════════════════════╗  ")
-                    .fg(BRAND_PRIMARY),
+                Span::raw("  ╭───────────────────────────────────────────────────────╮  ")
+                    .fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-                Span::raw("██╗    ██╗██╗███╗   ██╗     ██████╗ ██████╗ ████████╗")
-                    .fg(BRAND_SECONDARY)
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("                                                     ")
+                    .fg(colors.brand_secondary),
+                Span::raw("  │  ").fg(colors.brand_primary),
+            ]),
+            Line::from(vec![
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("     ╭╮╮  ╭╮ ╭╮ ╭╮╮  ╮    ╭───╮ ╭───╮ ╭─────╮    ")
+                    .fg(colors.brand_secondary)
                     .bold(),
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
+                Span::raw("  │  ").fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-                Span::raw("██║    ██║██║████╗  ██║    ██╔═══██╗██╔══██╗╚══██╔══╝")
-                    .fg(BRAND_SECONDARY)
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("     │││  ││ ││ │││╲ │    │   │ │   │   │      ")
+                    .fg(colors.brand_secondary)
                     .bold(),
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
+                Span::raw("  │  ").fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-                Span::raw("██║ █╗ ██║██║██╔██╗ ██║    ██║   ██║██████╔╝   ██║   ")
-                    .fg(BRAND_ACCENT)
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("     │││╲╲││ ││ ││╲│││    │   │ ╰───╯   │      ")
+                    .fg(colors.brand_accent)
                     .bold(),
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
+                Span::raw("  │  ").fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-                Span::raw("██║███╗██║██║██║╚██╗██║    ██║   ██║██╔═══╝    ██║   ")
-                    .fg(BRAND_ACCENT)
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("     ╰──╯╰─ ╰╯ ╰╯ ╰─╯    ╰───╯  ╯       ╯      ")
+                    .fg(colors.brand_accent)
                     .bold(),
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
+                Span::raw("  │  ").fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-                Span::raw("╚███╔███╔╝██║██║ ╚████║    ╚██████╔╝██║        ██║   ")
-                    .fg(Color::Rgb(168, 85, 247))
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("                                                     ")
+                    .fg(colors.brand_secondary),
+                Span::raw("  │  ").fg(colors.brand_primary),
+            ]),
+            Line::from(vec![
+                Span::raw("  │           ").fg(colors.brand_primary),
+                Span::raw("✨ Windows 11 Optimizer ")
+                    .fg(colors.text_primary)
                     .bold(),
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
+                Span::raw("·").fg(colors.brand_accent),
+                Span::raw(" v1.0.0 ").fg(colors.text_secondary),
+                Span::raw("✨         │  ").fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-                Span::raw(" ╚══╝╚══╝ ╚═╝╚═╝  ╚═══╝     ╚═════╝ ╚═╝        ╚═╝   ")
-                    .fg(Color::Rgb(168, 85, 247))
-                    .bold(),
-                Span::raw("  ║  ").fg(BRAND_PRIMARY),
-            ]),
-            Line::from(vec![
-                Span::raw("  ║                                                       ║  ")
-                    .fg(BRAND_PRIMARY),
-            ]),
-            Line::from(vec![
-                Span::raw("  ║           ").fg(BRAND_PRIMARY),
-                Span::raw("Windows 11 Optimizer ").fg(TEXT_PRIMARY).bold(),
-                Span::raw("•").fg(BRAND_ACCENT),
-                Span::raw(" v1.0.0              ").fg(TEXT_SECONDARY),
-                Span::raw("║  ").fg(BRAND_PRIMARY),
-            ]),
-            Line::from(vec![
-                Span::raw("  ║           ").fg(BRAND_PRIMARY),
-                Span::raw("⚡ Herramienta de optimización del sistema  ")
-                    .fg(TEXT_SECONDARY)
+                Span::raw("  │           ").fg(colors.brand_primary),
+                Span::raw("🌸 Herramienta de optimización del sistema ")
+                    .fg(colors.text_secondary)
                     .italic(),
-                Span::raw("      ║  ").fg(BRAND_PRIMARY),
+                Span::raw("  🌸    │  ").fg(colors.brand_primary),
             ]),
             Line::from(vec![
-                Span::raw("  ╚═══════════════════════════════════════════════════════╝  ")
-                    .fg(BRAND_PRIMARY),
+                Span::raw("  │  ").fg(colors.brand_primary),
+                Span::raw("                                                     ")
+                    .fg(colors.brand_secondary),
+                Span::raw("  │  ").fg(colors.brand_primary),
+            ]),
+            Line::from(vec![
+                Span::raw("  ╰───────────────────────────────────────────────────────╯  ")
+                    .fg(colors.brand_primary),
             ]),
         ];
 
@@ -297,6 +380,7 @@ impl App {
 
     /// Renderiza el menú con diseño moderno
     fn render_modern_menu(&mut self, frame: &mut Frame, area: Rect) {
+        let colors = self.get_colors();
         let menu_items = [
             (
                 "🧹",
@@ -331,9 +415,17 @@ impl App {
                 let is_selected = i == self.selected_menu_item;
 
                 let (fg_color, icon_color, desc_color) = if is_selected {
-                    (TEXT_PRIMARY, BRAND_ACCENT, TEXT_PRIMARY)
+                    (
+                        colors.text_primary,
+                        colors.brand_accent,
+                        colors.text_primary,
+                    )
                 } else {
-                    (TEXT_PRIMARY, BRAND_PRIMARY, TEXT_SECONDARY)
+                    (
+                        colors.text_primary,
+                        colors.brand_primary,
+                        colors.text_secondary,
+                    )
                 };
 
                 let content = Line::from(vec![
@@ -347,7 +439,7 @@ impl App {
 
                 let style = if is_selected {
                     Style::default()
-                        .bg(Color::Rgb(51, 65, 85))
+                        .bg(colors.selection_bg) // Lavanda pastel claro para selección
                         .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
@@ -359,12 +451,12 @@ impl App {
 
         let menu_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED)
             .title(Line::from(vec![
                 Span::raw(" "),
-                Span::raw("✨ ").fg(BRAND_ACCENT),
-                Span::raw("Menú Principal ").fg(TEXT_PRIMARY).bold(),
+                Span::raw("✨ ").fg(colors.brand_accent),
+                Span::raw("Menú Principal ").fg(colors.text_primary).bold(),
             ]))
             .title_alignment(Alignment::Center);
 
@@ -374,23 +466,28 @@ impl App {
 
     /// Renderiza un footer moderno
     fn render_modern_footer(&self, frame: &mut Frame, area: Rect) {
+        let colors = self.get_colors();
         let footer_text = Line::from(vec![
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("↑↓").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Navegar  ").fg(TEXT_SECONDARY),
-            Span::raw("•").fg(BRAND_ACCENT),
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("Enter").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Seleccionar  ").fg(TEXT_SECONDARY),
-            Span::raw("•").fg(BRAND_ACCENT),
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("Q/Esc").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Salir  ").fg(TEXT_SECONDARY),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("↑↓").fg(colors.brand_primary).bold(),
+            Span::raw(" Navegar  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Enter").fg(colors.brand_primary).bold(),
+            Span::raw(" Seleccionar  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Q/Esc").fg(colors.brand_primary).bold(),
+            Span::raw(" Salir  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Tab").fg(colors.brand_primary).bold(),
+            Span::raw(" Tema  ").fg(colors.text_secondary),
         ]);
 
         let footer_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED);
 
         let footer = Paragraph::new(footer_text)
@@ -401,7 +498,8 @@ impl App {
 
     /// Dibuja la vista de limpieza con diseño mejorado
     fn draw_clean_view(&mut self, frame: &mut Frame) {
-        let main_block = Block::default().style(Style::default().bg(BG_DARKER));
+        let colors = self.get_colors();
+        let main_block = Block::default().style(Style::default().bg(colors.bg_main));
         frame.render_widget(main_block, frame.area());
 
         let chunks = Layout::default()
@@ -417,13 +515,13 @@ impl App {
         // Título elegante
         let title_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED);
 
         let title = Paragraph::new(Line::from(vec![
-            Span::raw("🧹 ").fg(BRAND_ACCENT).bold(),
+            Span::raw("🧹 ").fg(colors.brand_accent).bold(),
             Span::raw("Limpieza de Archivos Temporales")
-                .fg(TEXT_PRIMARY)
+                .fg(colors.text_primary)
                 .bold(),
         ]))
         .alignment(Alignment::Center)
@@ -439,14 +537,15 @@ impl App {
 
     /// Renderiza estadísticas de limpieza con diseño moderno
     fn render_clean_stats(&self, frame: &mut Frame, area: Rect) {
+        let colors = self.get_colors();
         let stats_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(SUCCESS_COLOR))
+            .border_style(Style::default().fg(colors.success_color))
             .border_set(symbols::border::ROUNDED)
             .title(Line::from(vec![
                 Span::raw(" "),
-                Span::raw("📊 ").fg(BRAND_ACCENT),
-                Span::raw("Estadísticas ").fg(TEXT_PRIMARY).bold(),
+                Span::raw("📊 ").fg(colors.brand_accent),
+                Span::raw("Estadísticas ").fg(colors.text_primary).bold(),
             ]));
 
         let inner = stats_block.inner(area);
@@ -465,20 +564,20 @@ impl App {
 
         // Elementos eliminados
         let deleted_line = Line::from(vec![
-            Span::raw("  ✅  ").fg(SUCCESS_COLOR).bold(),
-            Span::raw("Elementos eliminados: ").fg(TEXT_SECONDARY),
+            Span::raw("  ✅  ").fg(colors.success_color).bold(),
+            Span::raw("Elementos eliminados: ").fg(colors.text_secondary),
             Span::raw(self.clean_stats.deleted_count.to_string())
-                .fg(SUCCESS_COLOR)
+                .fg(colors.success_color)
                 .bold(),
         ]);
         frame.render_widget(Paragraph::new(deleted_line), stats_chunks[0]);
 
         // Elementos omitidos
         let failed_line = Line::from(vec![
-            Span::raw("  ⚠️  ").fg(WARNING_COLOR).bold(),
-            Span::raw("Elementos omitidos: ").fg(TEXT_SECONDARY),
+            Span::raw("  ⚠️  ").fg(colors.warning_color).bold(),
+            Span::raw("Elementos omitidos: ").fg(colors.text_secondary),
             Span::raw(self.clean_stats.failed_count.to_string())
-                .fg(WARNING_COLOR)
+                .fg(colors.warning_color)
                 .bold(),
         ]);
         frame.render_widget(Paragraph::new(failed_line), stats_chunks[1]);
@@ -486,23 +585,27 @@ impl App {
         // Espacio liberado
         let size_mb = self.clean_stats.size_freed as f64 / 1024.0 / 1024.0;
         let freed_line = Line::from(vec![
-            Span::raw("  💾  ").fg(INFO_COLOR).bold(),
-            Span::raw("Espacio liberado: ").fg(TEXT_SECONDARY),
+            Span::raw("  💾  ").fg(colors.info_color).bold(),
+            Span::raw("Espacio liberado: ").fg(colors.text_secondary),
             Span::raw(format!("{:.2} MB", size_mb))
-                .fg(BRAND_PRIMARY)
+                .fg(colors.brand_primary)
                 .bold(),
         ]);
         frame.render_widget(Paragraph::new(freed_line), stats_chunks[2]);
 
         // Ayuda
         let help = Line::from(vec![
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("Q/Esc").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Volver  ").fg(TEXT_SECONDARY),
-            Span::raw("•").fg(BRAND_ACCENT),
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("↑↓").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Scroll  ").fg(TEXT_SECONDARY),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Q/Esc").fg(colors.brand_primary).bold(),
+            Span::raw(" Volver  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("↑↓").fg(colors.brand_primary).bold(),
+            Span::raw(" Scroll  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Tab").fg(colors.brand_primary).bold(),
+            Span::raw(" Tema  ").fg(colors.text_secondary),
         ]);
         frame.render_widget(
             Paragraph::new(help).alignment(Alignment::Center),
@@ -537,7 +640,8 @@ impl App {
 
     /// Dibuja una vista genérica de operación
     fn draw_generic_operation_view(&mut self, frame: &mut Frame, icon: &str, title: &str) {
-        let main_block = Block::default().style(Style::default().bg(BG_DARKER));
+        let colors = self.get_colors();
+        let main_block = Block::default().style(Style::default().bg(colors.bg_main));
         frame.render_widget(main_block, frame.area());
 
         let chunks = Layout::default()
@@ -553,12 +657,14 @@ impl App {
         // Título
         let title_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED);
 
         let title_widget = Paragraph::new(Line::from(vec![
-            Span::raw(format!("{} ", icon)).fg(BRAND_ACCENT).bold(),
-            Span::raw(title).fg(TEXT_PRIMARY).bold(),
+            Span::raw(format!("{} ", icon))
+                .fg(colors.brand_accent)
+                .bold(),
+            Span::raw(title).fg(colors.text_primary).bold(),
         ]))
         .alignment(Alignment::Center)
         .block(title_block);
@@ -573,17 +679,18 @@ impl App {
 
     /// Renderiza logs con estilo mejorado
     fn render_styled_logs(&self, frame: &mut Frame, area: Rect, title: &str) {
+        let colors = self.get_colors();
         let log_lines: Vec<Line> = self
             .operation_logs
             .iter()
             .map(|log| {
                 // Colorear logs según contenido
                 if log.contains("✅") {
-                    Line::from(vec![Span::raw(log.as_str()).fg(SUCCESS_COLOR)])
+                    Line::from(vec![Span::raw(log.as_str()).fg(colors.success_color)])
                 } else if log.contains("⚠️") || log.contains("ℹ️") {
-                    Line::from(vec![Span::raw(log.as_str()).fg(WARNING_COLOR)])
+                    Line::from(vec![Span::raw(log.as_str()).fg(colors.warning_color)])
                 } else if log.contains("❌") || log.contains("⛔") {
-                    Line::from(vec![Span::raw(log.as_str()).fg(ERROR_COLOR)])
+                    Line::from(vec![Span::raw(log.as_str()).fg(colors.error_color)])
                 } else if log.contains("🧹")
                     || log.contains("🌐")
                     || log.contains("🔧")
@@ -591,21 +698,23 @@ impl App {
                     || log.contains("🔄")
                     || log.contains("🔒")
                 {
-                    Line::from(vec![Span::raw(log.as_str()).fg(BRAND_PRIMARY).bold()])
+                    Line::from(vec![
+                        Span::raw(log.as_str()).fg(colors.brand_primary).bold(),
+                    ])
                 } else {
-                    Line::from(vec![Span::raw(log.as_str()).fg(TEXT_PRIMARY)])
+                    Line::from(vec![Span::raw(log.as_str()).fg(colors.text_primary)])
                 }
             })
             .collect();
 
         let logs_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED)
             .title(Line::from(vec![
                 Span::raw(" "),
-                Span::raw("📋 ").fg(BRAND_ACCENT),
-                Span::raw(title).fg(TEXT_PRIMARY).bold(),
+                Span::raw("📋 ").fg(colors.brand_accent),
+                Span::raw(title).fg(colors.text_primary).bold(),
                 Span::raw(" "),
             ]));
 
@@ -618,19 +727,24 @@ impl App {
 
     /// Renderiza footer para vistas de operación
     fn render_operation_footer(&self, frame: &mut Frame, area: Rect) {
+        let colors = self.get_colors();
         let footer_text = Line::from(vec![
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("Q/Esc").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Volver al menú  ").fg(TEXT_SECONDARY),
-            Span::raw("•").fg(BRAND_ACCENT),
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("↑↓").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Scroll  ").fg(TEXT_SECONDARY),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Q/Esc").fg(colors.brand_primary).bold(),
+            Span::raw(" Volver al menú  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("↑↓").fg(colors.brand_primary).bold(),
+            Span::raw(" Scroll  ").fg(colors.text_secondary),
+            Span::raw("•").fg(colors.brand_accent),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Tab").fg(colors.brand_primary).bold(),
+            Span::raw(" Tema  ").fg(colors.text_secondary),
         ]);
 
         let footer_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED);
 
         let footer = Paragraph::new(footer_text)
@@ -641,7 +755,8 @@ impl App {
 
     /// Dibuja la vista de información del sistema con diseño mejorado
     fn draw_info_view(&mut self, frame: &mut Frame) {
-        let main_block = Block::default().style(Style::default().bg(BG_DARKER));
+        let colors = self.get_colors();
+        let main_block = Block::default().style(Style::default().bg(colors.bg_main));
         frame.render_widget(main_block, frame.area());
 
         let chunks = Layout::default()
@@ -659,12 +774,14 @@ impl App {
         // Título
         let title_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED);
 
         let title = Paragraph::new(Line::from(vec![
-            Span::raw("💻 ").fg(BRAND_ACCENT).bold(),
-            Span::raw("Información del Sistema").fg(TEXT_PRIMARY).bold(),
+            Span::raw("💻 ").fg(colors.brand_accent).bold(),
+            Span::raw("Información del Sistema")
+                .fg(colors.text_primary)
+                .bold(),
         ]))
         .alignment(Alignment::Center)
         .block(title_block);
@@ -684,14 +801,14 @@ impl App {
 
         // Footer
         let footer_text = Line::from(vec![
-            Span::raw("  ").fg(BRAND_ACCENT),
-            Span::raw("Q/Esc").fg(BRAND_PRIMARY).bold(),
-            Span::raw(" Volver al menú  ").fg(TEXT_SECONDARY),
+            Span::raw("  ").fg(colors.brand_accent),
+            Span::raw("Q/Esc").fg(colors.brand_primary).bold(),
+            Span::raw(" Volver al menú  ").fg(colors.text_secondary),
         ]);
 
         let footer_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_PRIMARY))
+            .border_style(Style::default().fg(colors.brand_primary))
             .border_set(symbols::border::ROUNDED);
 
         let footer = Paragraph::new(footer_text)
@@ -702,50 +819,53 @@ impl App {
 
     /// Renderiza información del OS
     fn render_os_info(&self, frame: &mut Frame, area: Rect, _sys: &System) {
+        let colors = self.get_colors();
         let os_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(INFO_COLOR))
+            .border_style(Style::default().fg(colors.info_color))
             .border_set(symbols::border::ROUNDED)
             .title(Line::from(vec![
                 Span::raw(" "),
-                Span::raw("🖥️  ").fg(BRAND_ACCENT),
-                Span::raw("Sistema Operativo ").fg(TEXT_PRIMARY).bold(),
+                Span::raw("🖥️  ").fg(colors.brand_accent),
+                Span::raw("Sistema Operativo ")
+                    .fg(colors.text_primary)
+                    .bold(),
             ]));
 
         let os_info = vec![
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("OS: ").fg(BRAND_PRIMARY).bold(),
+                Span::raw("OS: ").fg(colors.brand_primary).bold(),
                 Span::raw(System::name().unwrap_or_else(|| "Desconocido".to_string()))
-                    .fg(TEXT_PRIMARY),
+                    .fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Versión: ").fg(BRAND_PRIMARY).bold(),
+                Span::raw("Versión: ").fg(colors.brand_primary).bold(),
                 Span::raw(System::os_version().unwrap_or_else(|| "Desconocida".to_string()))
-                    .fg(TEXT_PRIMARY),
+                    .fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Kernel: ").fg(BRAND_PRIMARY).bold(),
+                Span::raw("Kernel: ").fg(colors.brand_primary).bold(),
                 Span::raw(System::kernel_version().unwrap_or_else(|| "Desconocido".to_string()))
-                    .fg(TEXT_PRIMARY),
+                    .fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Host: ").fg(BRAND_PRIMARY).bold(),
+                Span::raw("Host: ").fg(colors.brand_primary).bold(),
                 Span::raw(System::host_name().unwrap_or_else(|| "Desconocido".to_string()))
-                    .fg(TEXT_PRIMARY),
+                    .fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Arquitectura: ").fg(BRAND_PRIMARY).bold(),
-                Span::raw(std::env::consts::ARCH).fg(TEXT_PRIMARY),
+                Span::raw("Arquitectura: ").fg(colors.brand_primary).bold(),
+                Span::raw(std::env::consts::ARCH).fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Tiempo activo: ").fg(BRAND_PRIMARY).bold(),
-                Span::raw(format_uptime(System::uptime())).fg(SUCCESS_COLOR),
+                Span::raw("Tiempo activo: ").fg(colors.brand_primary).bold(),
+                Span::raw(format_uptime(System::uptime())).fg(colors.success_color),
             ]),
         ];
 
@@ -755,6 +875,7 @@ impl App {
 
     /// Renderiza información de CPU y memoria
     fn render_cpu_mem_info(&self, frame: &mut Frame, area: Rect, sys: &System) {
+        let colors = self.get_colors();
         let cpu_count = sys.cpus().len();
         let cpu_brand = sys
             .cpus()
@@ -767,35 +888,35 @@ impl App {
 
         let cpu_mem_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_SECONDARY))
+            .border_style(Style::default().fg(colors.brand_secondary))
             .border_set(symbols::border::ROUNDED)
             .title(Line::from(vec![
                 Span::raw(" "),
-                Span::raw("⚡ ").fg(BRAND_ACCENT),
-                Span::raw("CPU y Memoria ").fg(TEXT_PRIMARY).bold(),
+                Span::raw("⚡ ").fg(colors.brand_accent),
+                Span::raw("CPU y Memoria ").fg(colors.text_primary).bold(),
             ]));
 
         let cpu_mem_info = vec![
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("CPU: ").fg(BRAND_PRIMARY).bold(),
-                Span::raw(cpu_brand).fg(TEXT_PRIMARY),
+                Span::raw("CPU: ").fg(colors.brand_primary).bold(),
+                Span::raw(cpu_brand).fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Núcleos: ").fg(BRAND_PRIMARY).bold(),
-                Span::raw(cpu_count.to_string()).fg(TEXT_PRIMARY),
+                Span::raw("Núcleos: ").fg(colors.brand_primary).bold(),
+                Span::raw(cpu_count.to_string()).fg(colors.text_primary),
             ]),
             Line::from(""),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Memoria Total: ").fg(BRAND_PRIMARY).bold(),
-                Span::raw(format!("{:.2} GB", total_memory)).fg(TEXT_PRIMARY),
+                Span::raw("Memoria Total: ").fg(colors.brand_primary).bold(),
+                Span::raw(format!("{:.2} GB", total_memory)).fg(colors.text_primary),
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw("Memoria Usada: ").fg(BRAND_PRIMARY).bold(),
-                Span::raw(format!("{:.2} GB", used_memory)).fg(WARNING_COLOR),
+                Span::raw("Memoria Usada: ").fg(colors.brand_primary).bold(),
+                Span::raw(format!("{:.2} GB", used_memory)).fg(colors.warning_color),
             ]),
         ];
 
@@ -805,6 +926,7 @@ impl App {
 
     /// Renderiza información de almacenamiento
     fn render_storage_info(&self, frame: &mut Frame, area: Rect, sys: &System) {
+        let colors = self.get_colors();
         let storage_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(0)])
@@ -820,11 +942,11 @@ impl App {
         };
 
         let gauge_color = if memory_percent > 90 {
-            ERROR_COLOR
+            colors.error_color
         } else if memory_percent > 70 {
-            WARNING_COLOR
+            colors.warning_color
         } else {
-            SUCCESS_COLOR
+            colors.success_color
         };
 
         let memory_gauge = Gauge::default()
@@ -832,14 +954,14 @@ impl App {
                 Block::default()
                     .title(Line::from(vec![
                         Span::raw(" "),
-                        Span::raw("💾 ").fg(BRAND_ACCENT),
-                        Span::raw("Uso de Memoria ").fg(TEXT_PRIMARY).bold(),
+                        Span::raw("💾 ").fg(colors.brand_accent),
+                        Span::raw("Uso de Memoria ").fg(colors.text_primary).bold(),
                     ]))
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(gauge_color))
                     .border_set(symbols::border::ROUNDED),
             )
-            .gauge_style(Style::default().fg(gauge_color).bg(BG_DARK))
+            .gauge_style(Style::default().fg(gauge_color).bg(colors.bg_alt))
             .percent(memory_percent)
             .label(format!("{}%", memory_percent));
         frame.render_widget(memory_gauge, storage_chunks[0]);
@@ -860,20 +982,20 @@ impl App {
                 };
 
                 let color = if usage_percent > 90.0 {
-                    ERROR_COLOR
+                    colors.error_color
                 } else if usage_percent > 70.0 {
-                    WARNING_COLOR
+                    colors.warning_color
                 } else {
-                    SUCCESS_COLOR
+                    colors.success_color
                 };
 
                 Line::from(vec![
                     Span::raw("  "),
                     Span::raw(format!("{}: ", disk.mount_point().to_string_lossy()))
-                        .fg(BRAND_PRIMARY)
+                        .fg(colors.brand_primary)
                         .bold(),
                     Span::raw(format!("{:.1} GB / {:.1} GB ", used_space, total_space))
-                        .fg(TEXT_PRIMARY),
+                        .fg(colors.text_primary),
                     Span::raw(format!("({:.1}%)", usage_percent))
                         .fg(color)
                         .bold(),
@@ -883,12 +1005,12 @@ impl App {
 
         let disk_block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(BRAND_ACCENT))
+            .border_style(Style::default().fg(colors.brand_accent))
             .border_set(symbols::border::ROUNDED)
             .title(Line::from(vec![
                 Span::raw(" "),
-                Span::raw("💿 ").fg(BRAND_ACCENT),
-                Span::raw("Discos ").fg(TEXT_PRIMARY).bold(),
+                Span::raw("💿 ").fg(colors.brand_accent),
+                Span::raw("Discos ").fg(colors.text_primary).bold(),
             ]));
 
         let disk_widget = Paragraph::new(disk_lines).block(disk_block);
