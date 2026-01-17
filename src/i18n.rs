@@ -686,7 +686,7 @@ impl I18n {
 
         // Crear HashMap e insertar traducciones
         let mut translations = HashMap::new();
-        
+
         // Insertar traducciones en español
         for (key, text) in es_translations {
             translations.insert((Spanish, key), text);
@@ -696,7 +696,7 @@ impl I18n {
         for (key, text) in en_translations {
             translations.insert((English, key), text);
         }
-        
+
         translations
     }
 }

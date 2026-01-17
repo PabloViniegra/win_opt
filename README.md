@@ -354,6 +354,4 @@ Contributions are welcome! Please ensure:
 
 ## Version
 
-Current version: **1.1.0**
-
-See [RELEASE_NOTES.md](RELEASE_NOTES.md) for version history and changelog.
+Current version: **1.2.1**

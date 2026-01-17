@@ -1,6 +1,6 @@
 [package]
 name = "win_opt"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2024"
 authors = ["pablovpmadrid@gmail.com"]
 description = "Herramienta de optimización y mantenimiento para Windows 11"

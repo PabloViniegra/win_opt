@@ -1,8 +1,8 @@
-use crate::animation::{progress_bar, Spinner};
+use crate::animation::{Spinner, progress_bar};
 use crate::config::Config;
 use crate::i18n::{I18n, I18nKey};
 use crate::theme::{ColorPalette, Theme};
-use crate::types::{CleanStats, OperationState, View};
+use crate::types::{CleanStats, OperationState, View, WorkerHandle, WorkerMessage};
 use crate::utils::format_uptime;
 use crate::{cleanup, optimization};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
@@ -40,6 +40,8 @@ pub struct App {
     pub config: Config,
     /// Spinner para animaciones
     pub spinner: Spinner,
+    /// Handle del worker thread actual (si hay alguno ejecutándose)
+    pub worker_handle: Option<WorkerHandle>,
 }
 
 impl Default for App {
@@ -65,6 +67,7 @@ impl Default for App {
             i18n,
             config,
             spinner: Spinner::new(),
+            worker_handle: None,
         }
     }
 }
@@ -104,6 +107,9 @@ impl App {
     /// Ejecuta el loop principal de la aplicación
     pub fn run(mut self, mut terminal: DefaultTerminal) -> std::io::Result<()> {
         while !self.should_quit {
+            // Procesar mensajes del worker si hay uno activo
+            self.process_worker_messages();
+
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
@@ -114,6 +120,43 @@ impl App {
         }
 
         Ok(())
+    }
+
+    /// Procesa mensajes del worker thread
+    ///
+    /// Este método lee todos los mensajes disponibles del canal del worker
+    /// sin bloquear, actualizando el estado de la aplicación según corresponda.
+    fn process_worker_messages(&mut self) {
+        let mut should_clear_worker = false;
+
+        if let Some(ref handle) = self.worker_handle {
+            // Procesar todos los mensajes disponibles (non-blocking)
+            while let Ok(message) = handle.receiver.try_recv() {
+                match message {
+                    WorkerMessage::Log(log) => {
+                        self.operation_logs.push(log);
+                    }
+                    WorkerMessage::StateChange(state) => {
+                        self.operation_state = state;
+                    }
+                    WorkerMessage::StatsUpdate(stats) => {
+                        self.clean_stats = stats;
+                    }
+                    WorkerMessage::Error(error) => {
+                        self.operation_logs.push(format!("❌ ERROR: {}", error));
+                    }
+                    WorkerMessage::Completed => {
+                        // Marcar para limpiar handle después del loop
+                        should_clear_worker = true;
+                    }
+                }
+            }
+        }
+
+        // Limpiar worker handle si recibimos el mensaje de Completed
+        if should_clear_worker {
+            self.worker_handle = None;
+        }
     }
 
     /// Dibuja la interfaz según la vista actual
@@ -489,11 +532,7 @@ impl App {
                 // Item normal
                 let actual_idx = visual_to_actual
                     .iter()
-                    .position(|&v| {
-                        actual_to_visual
-                            .get(v)
-                            .is_some_and(|&av| av == visual_idx)
-                    })
+                    .position(|&v| actual_to_visual.get(v).is_some_and(|&av| av == visual_idx))
                     .unwrap_or(0);
 
                 let is_selected = actual_idx == self.selected_menu_item;
@@ -803,15 +842,32 @@ impl App {
         let main_block = Block::default().style(Style::default().bg(colors.bg_main));
         frame.render_widget(main_block, frame.area());
 
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(2)
-            .constraints([
-                Constraint::Length(3),
-                Constraint::Min(10),
-                Constraint::Length(3),
-            ])
-            .split(frame.area());
+        // Ajustar layout según si hay spinner o no
+        let show_spinner = self.operation_state == OperationState::Running
+            || self.operation_state == OperationState::Starting;
+
+        let chunks = if show_spinner {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints([
+                    Constraint::Length(3), // Título
+                    Constraint::Length(3), // Spinner
+                    Constraint::Min(7),    // Logs
+                    Constraint::Length(3), // Footer
+                ])
+                .split(frame.area())
+        } else {
+            Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints([
+                    Constraint::Length(3), // Título
+                    Constraint::Min(10),   // Logs
+                    Constraint::Length(3), // Footer
+                ])
+                .split(frame.area())
+        };
 
         // Título
         let title_block = Block::default()
@@ -829,11 +885,22 @@ impl App {
         .block(title_block);
         frame.render_widget(title_widget, chunks[0]);
 
-        // Logs
-        self.render_styled_logs(frame, chunks[1], "Registro de Operaciones");
+        if show_spinner {
+            // Spinner
+            self.render_spinner(frame, chunks[1]);
 
-        // Footer
-        self.render_operation_footer(frame, chunks[2]);
+            // Logs
+            self.render_styled_logs(frame, chunks[2], "Registro de Operaciones");
+
+            // Footer
+            self.render_operation_footer(frame, chunks[3]);
+        } else {
+            // Logs
+            self.render_styled_logs(frame, chunks[1], "Registro de Operaciones");
+
+            // Footer
+            self.render_operation_footer(frame, chunks[2]);
+        }
     }
 
     /// Renderiza logs con estilo mejorado
@@ -913,6 +980,33 @@ impl App {
             .alignment(Alignment::Center)
             .block(footer_block);
         frame.render_widget(footer, area);
+    }
+
+    /// Renderiza el spinner animado durante operaciones en curso
+    ///
+    /// Muestra un spinner animado con el mensaje "Operación en progreso..."
+    /// cuando hay una operación ejecutándose en un worker thread.
+    fn render_spinner(&self, frame: &mut Frame, area: Rect) {
+        let colors = self.get_colors();
+
+        // El spinner calcula automáticamente su frame basado en el tiempo transcurrido
+        let spinner_text = Line::from(vec![
+            Span::raw(self.spinner.frame())
+                .fg(colors.brand_accent)
+                .bold(),
+            Span::raw(" Operación en progreso...").fg(colors.text_primary),
+        ]);
+
+        let spinner_block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(colors.warning_color))
+            .border_set(symbols::border::ROUNDED);
+
+        let spinner_widget = Paragraph::new(spinner_text)
+            .alignment(Alignment::Center)
+            .block(spinner_block);
+
+        frame.render_widget(spinner_widget, area);
     }
 
     /// Dibuja la vista de información del sistema con diseño mejorado
@@ -1142,7 +1236,7 @@ impl App {
 
         // Crear barra de progreso visual
         let bar = progress_bar(memory_percent, 40);
-        
+
         let memory_block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(gauge_color).bold())
@@ -1166,11 +1260,8 @@ impl App {
             ]),
             Line::from(vec![
                 Span::raw("  "),
-                Span::raw(format!(
-                    "{:.1} GB / {:.1} GB",
-                    used_memory, total_memory
-                ))
-                .fg(colors.text_secondary),
+                Span::raw(format!("{:.1} GB / {:.1} GB", used_memory, total_memory))
+                    .fg(colors.text_secondary),
             ]),
         ];
 

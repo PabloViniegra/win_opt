@@ -38,7 +38,9 @@ impl Spinner {
 
     /// Obtiene el frame de un spinner de bloques
     pub fn blocks_frame(&self) -> &'static str {
-        let frames = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂"];
+        let frames = [
+            "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂",
+        ];
         let elapsed = self.start_time.elapsed();
         let frame_index = (elapsed.as_millis() / 60) as usize;
         frames[frame_index % frames.len()]
@@ -81,7 +83,7 @@ pub fn progress_bar(percentage: u16, width: usize) -> String {
     let partial_index = (partial_progress * partial_chars.len() as f32) as usize;
 
     let mut bar = filled_char.repeat(filled);
-    
+
     if partial_index > 0 && partial_index < partial_chars.len() && empty > 0 {
         bar.push_str(partial_chars[partial_index]);
         bar.push_str(&empty_char.repeat(empty.saturating_sub(1)));
@@ -96,9 +98,9 @@ pub fn progress_bar(percentage: u16, width: usize) -> String {
 pub fn vertical_bar_chart(value: f32, max_value: f32, height: usize) -> Vec<String> {
     let percentage = (value / max_value).min(1.0);
     let filled_height = (height as f32 * percentage) as usize;
-    
+
     let mut lines = Vec::new();
-    
+
     for i in (0..height).rev() {
         if i < filled_height {
             lines.push("█".to_string());
@@ -106,7 +108,7 @@ pub fn vertical_bar_chart(value: f32, max_value: f32, height: usize) -> Vec<Stri
             lines.push("░".to_string());
         }
     }
-    
+
     lines
 }
 
@@ -155,7 +157,7 @@ impl Pulse {
         let elapsed = self.start_time.elapsed().as_millis() as f32;
         let cycle = self.duration.as_millis() as f32;
         let phase = (elapsed % cycle) / cycle;
-        
+
         // Función sinusoidal para pulso suave
         ((phase * std::f32::consts::PI * 2.0).sin() + 1.0) / 2.0
     }

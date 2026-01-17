@@ -1,3 +1,4 @@
+use crate::executor::{spawn_repair_worker, spawn_windows_update_worker};
 use crate::types::OperationState;
 use crate::utils::is_admin;
 use crate::{log_debug, log_error, log_info, log_warn};
@@ -62,10 +63,14 @@ pub fn execute_network(app: &mut crate::app::App) {
 }
 
 /// Ejecuta las operaciones de reparación
+///
+/// Esta función spawn un worker thread que ejecuta DISM y SFC en segundo plano,
+/// manteniendo la UI responsiva y evitando que la salida corrompa la TUI.
 pub fn execute_repair(app: &mut crate::app::App) {
-    app.operation_state = OperationState::Running;
-    log_info!(app, "🔧 Iniciando reparación del sistema...");
+    // Limpiar logs anteriores
+    app.operation_logs.clear();
 
+    // Verificar permisos de administrador
     if !is_admin() {
         log_error!(
             app,
@@ -75,54 +80,16 @@ pub fn execute_repair(app: &mut crate::app::App) {
             app,
             "ℹ️  Por favor, ejecuta la aplicación como Administrador"
         );
-        app.operation_state = OperationState::Completed;
+        app.operation_state = OperationState::Failed;
         return;
     }
 
-    // DISM
-    log_info!(app, "");
-    log_info!(
-        app,
-        "🔧 Ejecutando DISM (Deployment Image Servicing and Management)..."
-    );
-    log_info!(app, "ℹ️  Esto puede tardar varios minutos...");
+    // Cambiar estado a Starting
+    app.operation_state = OperationState::Starting;
+    log_info!(app, "🔧 Iniciando reparación del sistema...");
 
-    let status_dism = Command::new("cmd")
-        .args(["/C", "DISM /Online /Cleanup-Image /RestoreHealth"])
-        .status();
-
-    match status_dism {
-        Ok(s) => {
-            if s.success() {
-                log_info!(app, "✅ DISM finalizado correctamente");
-            } else {
-                log_error!(app, "❌ DISM finalizó con errores");
-            }
-        }
-        Err(e) => {
-            log_error!(app, "❌ Error al ejecutar DISM: {}", e);
-        }
-    }
-
-    // SFC
-    log_info!(app, "");
-    log_info!(app, "🔧 Ejecutando SFC (System File Checker)...");
-    log_info!(app, "ℹ️  Esto puede tardar varios minutos...");
-
-    let status_sfc = Command::new("cmd").args(["/C", "sfc /scannow"]).status();
-
-    match status_sfc {
-        Ok(s) => {
-            if s.success() {
-                log_info!(app, "✅ Escaneo de archivos finalizado");
-            } else {
-                log_warn!(app, "⚠️  Escaneo finalizado con advertencias");
-            }
-        }
-        Err(e) => log_error!(app, "❌ Error crítico: {}", e),
-    }
-
-    app.operation_state = OperationState::Completed;
+    // Spawn worker thread
+    app.worker_handle = Some(spawn_repair_worker());
 }
 
 /// Ejecuta optimización avanzada del sistema
@@ -241,10 +208,15 @@ pub fn execute_optimize(app: &mut crate::app::App) {
 }
 
 /// Ejecuta limpieza de archivos de Windows Update
+///
+/// Esta función spawn un worker thread que ejecuta DISM para limpiar
+/// componentes de Windows Update en segundo plano, manteniendo la UI
+/// responsiva y evitando que la salida corrompa la TUI.
 pub fn execute_windows_update_cleanup(app: &mut crate::app::App) {
-    app.operation_state = OperationState::Running;
-    log_info!(app, "🔄 Iniciando limpieza de Windows Update...");
+    // Limpiar logs anteriores
+    app.operation_logs.clear();
 
+    // Verificar permisos de administrador
     if !is_admin() {
         log_error!(
             app,
@@ -254,52 +226,16 @@ pub fn execute_windows_update_cleanup(app: &mut crate::app::App) {
             app,
             "ℹ️  Por favor, ejecuta la aplicación como Administrador"
         );
-        app.operation_state = OperationState::Completed;
+        app.operation_state = OperationState::Failed;
         return;
     }
 
-    // Limpiar archivos de Windows Update
-    log_info!(app, "");
-    log_info!(app, "🗑️  Eliminando archivos de actualización antiguos...");
+    // Cambiar estado a Starting
+    app.operation_state = OperationState::Starting;
+    log_info!(app, "🔄 Iniciando limpieza de Windows Update...");
 
-    let cleanup_result = Command::new("cmd")
-        .args(["/C", "cleanmgr /sageset:1 & cleanmgr /sagerun:1"])
-        .output();
-
-    match cleanup_result {
-        Ok(result) => {
-            if result.status.success() {
-                log_info!(app, "✅ Limpieza de disco iniciada");
-            } else {
-                log_warn!(app, "⚠️  Error al iniciar limpieza de disco");
-            }
-        }
-        Err(e) => log_error!(app, "❌ Error: {}", e),
-    }
-
-    // Limpiar componentes
-    log_info!(app, "");
-    log_info!(app, "🔧 Ejecutando limpieza de componentes...");
-
-    let dism_cleanup = Command::new("cmd")
-        .args(["/C", "DISM /Online /Cleanup-Image /StartComponentCleanup"])
-        .status();
-
-    match dism_cleanup {
-        Ok(s) => {
-            if s.success() {
-                log_info!(app, "✅ Componentes limpiados exitosamente");
-            } else {
-                log_warn!(app, "⚠️  Limpieza de componentes con advertencias");
-            }
-        }
-        Err(e) => log_error!(app, "❌ Error en limpieza: {}", e),
-    }
-
-    log_info!(app, "");
-    log_info!(app, "✅ Limpieza de Windows Update completada");
-
-    app.operation_state = OperationState::Completed;
+    // Spawn worker thread
+    app.worker_handle = Some(spawn_windows_update_worker());
 }
 
 /// Ejecuta desactivación de telemetría y mejoras de privacidad

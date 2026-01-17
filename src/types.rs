@@ -20,8 +20,10 @@ pub enum View {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationState {
     Idle,
+    Starting,
     Running,
     Completed,
+    Failed,
 }
 
 /// Estadísticas de limpieza
@@ -30,6 +32,49 @@ pub struct CleanStats {
     pub deleted_count: usize,
     pub failed_count: usize,
     pub size_freed: u64,
+}
+
+/// Mensajes enviados desde el worker thread al thread principal
+#[derive(Debug)]
+pub enum WorkerMessage {
+    /// Log de una línea de texto
+    Log(String),
+    /// Cambio de estado de la operación
+    StateChange(OperationState),
+    /// Actualización de estadísticas de limpieza
+    StatsUpdate(CleanStats),
+    /// Error ocurrido durante la operación
+    Error(String),
+    /// Operación completada exitosamente
+    Completed,
+}
+
+/// Handle para manejar un worker thread
+pub struct WorkerHandle {
+    /// Receptor de mensajes del worker
+    pub receiver: std::sync::mpsc::Receiver<WorkerMessage>,
+    /// Handle del thread (usado para join)
+    pub thread_handle: Option<std::thread::JoinHandle<()>>,
+    /// Flag atómico para cancelar la operación
+    pub cancel_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl Drop for WorkerHandle {
+    /// Asegura que el thread worker se una correctamente al ser descartado
+    ///
+    /// Esto previene fugas de recursos asegurando que el thread termine
+    /// antes de que el handle sea destruido.
+    fn drop(&mut self) {
+        // Señalar cancelación al worker
+        self.cancel_flag
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+
+        // Unir el thread si existe
+        if let Some(handle) = self.thread_handle.take() {
+            // Ignorar errores de join (el thread pudo haber entrado en pánico)
+            let _ = handle.join();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -55,11 +100,15 @@ mod tests {
     #[test]
     fn test_operation_state_transitions() {
         let idle = OperationState::Idle;
+        let starting = OperationState::Starting;
         let running = OperationState::Running;
         let completed = OperationState::Completed;
+        let failed = OperationState::Failed;
 
-        assert_ne!(idle, running);
+        assert_ne!(idle, starting);
+        assert_ne!(starting, running);
         assert_ne!(running, completed);
+        assert_ne!(completed, failed);
         assert_ne!(idle, completed);
     }
 
