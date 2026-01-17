@@ -263,7 +263,7 @@ impl I18n {
             // App Info
             (AppTitle, "WIN OPT"),
             (AppSubtitle, "Windows 11 Optimizer"),
-            (AppVersion, "v1.2.0"),
+            (AppVersion, "v1.2.1"),
             (MainMenu, "Menú Principal"),
             (OperationsLog, "Registro de Operaciones"),
             // Menu Items
@@ -497,7 +497,7 @@ impl I18n {
             // App Info
             (AppTitle, "WIN OPT"),
             (AppSubtitle, "Windows 11 Optimizer"),
-            (AppVersion, "v1.2.0"),
+            (AppVersion, "v1.2.1"),
             (MainMenu, "Main Menu"),
             (OperationsLog, "Operation Log"),
             // Menu Items
